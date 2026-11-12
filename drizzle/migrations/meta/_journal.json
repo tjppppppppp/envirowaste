@@ -22,6 +22,13 @@
       "when": 1794456622834,
       "tag": "0002_let_owners_delete_failed_batch",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794458920028,
+      "tag": "0003_collection_entries_table",
+      "breakpoints": true
     }
   ]
 }

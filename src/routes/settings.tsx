@@ -25,17 +25,45 @@ function Settings() {
           <li>Open Overview in Demo mode and use the filters; unknown values show hatched, never as zero.</li>
           <li>Sign in, then open Waste Explorer, load the small example file (or your own CSV), check the suggested mapping, review validation and save.</li>
           <li>Switch to Project mode to explore your records in Source Mapper and Collection Log.</li>
-          <li>Create an audit in Waste Audits and compare it with the building's collection records.</li>
+          <li>Create an audit in Waste Audits and compare it with the building's collection records. Your choice of Demo or Project mode is remembered after reload.</li>
+          <li>Drivers: sign in with the driver role (an administrator grants it above), open Collection Log → Driver entry, pick a truck and route, enter full and empty weight, review and save; download the Excel-compatible CSV.</li>
+          <li>Records Digitization: step through the synthetic sample tickets, correct fields, approve and export.</li>
           <li>Open Insights to review findings, then generate and export the summary in Reports.</li>
         </ol></div>
+
+      <div className="card" id="roadmap"><h2>Roadmap: implemented vs planned</h2>
+        <table className="t"><thead><tr><th>Order</th><th>Item</th><th>Status</th></tr></thead><tbody>
+          <tr><td>—</td><td>Overview dashboard, LoadMan-style CSV importer with data quality, Source Mapper, Waste Audit Manager, Insights, Reports (completed earlier)</td><td>Implemented</td></tr>
+          <tr><td>1</td><td>Driver workflow: login identity, automatic time, truck → route autofill, editable defaults, weight validation, net weight, review, save, CSV export</td><td>Implemented with synthetic demonstration mappings; real mappings need F&amp;S</td></tr>
+          <tr><td>2</td><td>Data explorer: imported records with building attribution and data quality, Excel-compatible exports</td><td>Implemented; connecting driver entries into explorer analysis is planned</td></tr>
+          <tr><td>3</td><td>Synthetic ticket digitization prototype (preset mock extraction, human approval, export)</td><td>Prototype implemented; real document processing not built</td></tr>
+          <tr><td>4</td><td>Research integration: connect operational data with audits, characterization and recommendations</td><td>Partly (audit vs collection comparison); fuller integration planned</td></tr>
+          <tr><td>Later</td><td>Importing supported route-data exports from route-management platforms (exploratory; not confirmed requirements)</td><td>Planned. No route optimization and no unapproved university integrations</td></tr>
+          <tr><td>Later</td><td>Rego imports, intervention tracker, .xlsx import, photo upload, QR scanning</td><td>Planned</td></tr>
+        </tbody></table></div>
+      <div className="card"><h2>Hypothesis to test with F&amp;S: custom driver form vs Microsoft Forms/Excel</h2>
+        <p style={{ fontSize: 13, lineHeight: 1.6 }}>This is a hypothesis, not a result validated with drivers. Microsoft Forms plus Excel is cheap, familiar and may be enough. The custom form may help where it (a) fills work order, material and disposal location from the chosen truck and route, so drivers type less, (b) blocks impossible weights (negative, or full below empty) at entry and calculates net weight, and (c) keeps the autofilled original and each correction. It adds hosting, access control and maintenance cost, and it depends on F&amp;S supplying authorized mappings. Both approaches end in Excel-compatible CSV, so neither requires a proprietary integration. Test with a small F&amp;S trial before preferring either.</p></div>
+      <div className="card"><h2>Confirmations needed from F&amp;S</h2>
+        <ul style={{ fontSize: 13, lineHeight: 1.7, paddingLeft: 16 }}>
+          <li>Which datasets are authorized for use, and how they must be handled and stored.</li>
+          <li>Actual trucks, routes, materials, work orders and disposal-location mapping (none are assumed here).</li>
+          <li>Which drivers and researchers get access, and what sharing is permitted.</li>
+          <li>Exceptions: unusual loads, split loads, missing work orders, re-weighs.</li>
+          <li>Weights and units in use, and rounding rules.</li>
+          <li>The Microsoft export format (columns, Excel or CSV, Forms/SharePoint expectations).</li>
+          <li>Institution security approvals required before any real operational data or documents are used.</li>
+        </ul>
+        <p style={{ fontSize: 13, marginTop: 6 }}>EnviroTrap Nexus is an independent prototype, not UIUC-approved for production.</p></div>
       <div className="grid two">
-        <div className="card"><h2>Architecture and data</h2><p style={{ fontSize: 13, lineHeight: 1.6 }}>A React web app with a hosted PostgreSQL database. Row-level rules keep each person's rows private; writes need the researcher or administrator role. Tables: import_batches (file, mapping, quality summary), import_records (the original row untouched, plus normalized date, kg weight, building, container, stream, flags and a list of transformations), audits (with per-material measurements), insight_reviews and user_roles. Demo data is generated in code and never stored with real data.</p></div>
+        <div className="card"><h2>Architecture and data</h2><p style={{ fontSize: 13, lineHeight: 1.6 }}>A React web app with a hosted PostgreSQL database. Row-level rules keep each person's rows private; research writes need the researcher or administrator role, and collection entries (collection_entries: identity and timestamp set by the database, net weight calculated by the database, original autofill and corrections kept, no edits or deletes) can be written by driver, researcher or administrator roles only. Tables: import_batches (file, mapping, quality summary), import_records (the original row untouched, plus normalized date, kg weight, building, container, stream, flags and a list of transformations), audits (with per-material measurements), insight_reviews and user_roles. Demo data is generated in code and never stored with real data.</p></div>
         <div className="card"><h2>Limitations</h2><ul style={{ fontSize: 13, lineHeight: 1.6, paddingLeft: 16 }}>
           <li>An independent prototype, not an officially deployed university system.</li>
           <li>No integration with university trucks, RFID hardware or LoadMan; no access to Rego's private API.</li>
           <li>RFID tags are not assumed to be operational.</li>
-          <li>CSV only (up to 5 MB, 5,000 rows); no Excel, photo upload or QR scanning yet.</li>
-          <li>Driver logging, Rego imports, intervention tracking and advanced reports are later phases.</li>
+          <li>CSV only for import (up to 5 MB, 5,000 rows); exports are Excel-compatible CSV (UTF-8 with BOM). No .xlsx import, photo upload or QR scanning yet.</li>
+          <li>Truck, route, work-order and disposal mappings in the driver form are synthetic demonstrations, never actual UIUC assignments; project mode has no mappings configured.</li>
+          <li>Records Digitization uses synthetic tickets and preset mock extraction; no OCR or AI is implemented, and no document upload exists.</li>
+          <li>Rego imports and intervention tracking are later phases. Not UIUC-approved for production; no route optimization or unapproved university integrations.</li>
           <li>No map coordinates exist; the mapper is a directory with a schematic journey.</li></ul></div>
       </div>
     </AppShell>

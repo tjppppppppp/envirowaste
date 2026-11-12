@@ -6,7 +6,7 @@ import { Input } from "../components/ui/input";
 import { Textarea } from "../components/ui/textarea";
 import { backend } from "../lib/backend";
 import { stats } from "../lib/analysis";
-import { toCsv } from "../lib/csv";
+import { downloadCsv } from "../lib/csv";
 import { BUILDINGS } from "../lib/demo";
 import { fmt, setMode, useAudits, useRecords, useRole, useUser } from "../lib/store";
 
@@ -36,7 +36,7 @@ function Audits() {
   };
   const cur = audits.find((a) => a.id === sel) ?? audits[0];
   const bs = cur ? stats(records.filter((r) => r.building === cur.building)) : null;
-  const exp = () => { if (!cur) return; const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([toCsv([["audit", "building", "date", "status", "method", "material", "kg"], ...cur.measurements.map((m) => [cur.title, cur.building, cur.audit_date, cur.status, cur.method, m.name, m.kg])])], { type: "text/csv" })); a.download = "audit.csv"; a.click(); };
+  const exp = () => { if (!cur) return; downloadCsv("audit.csv", [["audit", "building", "date", "status", "method", "material", "kg"], ...cur.measurements.map((m) => [cur.title, cur.building, cur.audit_date, cur.status, cur.method, m.name, m.kg])]); };
   const setStatus = async (id: string, s: string) => { const r = await backend.from("audits").update({ status: s }).eq("id", id); if (r.error) setMsg({ t: "Could not change status: " + r.error.message, err: true }); else reload(); };
   return (
     <AppShell title="Waste Audits" active="/audits">

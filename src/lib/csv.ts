@@ -45,3 +45,10 @@ export function normWeight(v: string, unit: string): { kg: number | null; note?:
   const kg = Math.round(n * f * 1000) / 1000;
   return { kg, note: f === 1 ? undefined : `weight ${v} ${unit} → ${kg} kg` };
 }
+
+/** Excel-friendly download: UTF-8 BOM and CRLF line ends so Excel opens it directly. */
+export function downloadCsv(name: string, rows: (string | number | null)[][]) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["\ufeff" + toCsv(rows).replace(/\n/g, "\r\n") + "\r\n"], { type: "text/csv;charset=utf-8" }));
+  a.download = name; a.click();
+}

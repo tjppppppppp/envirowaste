@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "../components/shell";
 import { Button } from "../components/ui/button";
 import { backend } from "../lib/backend";
-import { FIELDS, normDate, normWeight, parseCsv, suggest, toCsv } from "../lib/csv";
+import { FIELDS, normDate, normWeight, parseCsv, suggest, downloadCsv } from "../lib/csv";
 import { fmt, useRole, useUser } from "../lib/store";
 
 export const Route = createFileRoute("/explorer")({
@@ -73,7 +73,7 @@ function Explorer() {
   };
   const exportCsv = () => {
     const out = [["row", "date", "weight_kg", "building", "container", "stream", "duplicate", "missing", "transformations"], ...prep.map((p) => [p.row, p.date, p.kg, p.building, p.container, p.stream, p.dup ? "yes" : "no", p.missing.join("; "), p.notes.join("; ")])];
-    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([toCsv(out)], { type: "text/csv" })); a.download = "normalized-" + (name || "records.csv"); a.click();
+    downloadCsv("normalized-" + (name || "records.csv"), out);
   };
   return (
     <AppShell title="Waste Explorer" active="/explorer">

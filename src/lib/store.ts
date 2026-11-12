@@ -3,8 +3,11 @@ import { backend } from "./backend";
 import { demoRecords, type Rec } from "./demo";
 
 let mode: "demo" | "project" = "demo";
+// Cause of the "saved audit not visible after reload" bug: the mode lived only in memory, so every reload reset to Demo and showed demo audits.
+// The choice is now remembered per browser (never mixes the two datasets; it only remembers which one you were viewing).
+if (typeof window !== "undefined") { try { if (window.localStorage.getItem("nx-mode") === "project") mode = "project"; } catch {} }
 const subs = new Set<() => void>();
-export function setMode(m: "demo" | "project") { mode = m; subs.forEach((f) => f()); }
+export function setMode(m: "demo" | "project") { mode = m; try { window.localStorage.setItem("nx-mode", m); } catch {} subs.forEach((f) => f()); }
 export function useMode() { return useSyncExternalStore((f) => { subs.add(f); return () => { subs.delete(f); }; }, () => mode, () => "demo" as const); }
 
 export type User = { id: string; email: string } | null;
