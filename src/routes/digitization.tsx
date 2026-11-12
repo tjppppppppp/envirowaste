@@ -3,6 +3,7 @@ import { useState } from "react";
 import { AppShell } from "../components/shell";
 import { Button } from "../components/ui/button";
 import { downloadCsv } from "../lib/csv";
+import { TicketUploads } from "../components/ticket-uploads";
 
 export const Route = createFileRoute("/digitization")({
   head: () => ({ meta: [{ title: "Records Digitization — EnviroTrap Nexus" }, { name: "description", content: "Prototype of a document-to-structured-data workflow using synthetic sample tickets, preset mock extraction and human approval." }] }),
@@ -33,7 +34,7 @@ function Preview({ d }: { d: Doc }) {
   );
 }
 
-function Digitization() {
+function Samples() {
   const [docs, setDocs] = useState<Doc[]>(SAMPLES); const [sel, setSel] = useState("S1"); const [status, setStatus] = useState<Record<string, "pending" | "approved">>({});
   const [hist, setHist] = useState<{ doc: string; field: string; from: string; to: string; at: string }[]>([]);
   const cur = docs.find((d) => d.id === sel) ?? docs[0];
@@ -47,8 +48,8 @@ function Digitization() {
     ...approved.map((d) => [d.id, d.type, "SYNTHETIC SAMPLE", "human approved", ...FIELDS.map((k) => d.ext[k].v), missing(d).join("; "), dupOf(d)?.id ?? "", hist.filter((h) => h.doc === d.id).map((h) => `${h.field}: ${h.from} -> ${h.to}`).join("; ")])]);
   const dup = dupOf(cur); const miss = missing(cur);
   return (
-    <AppShell title="Records Digitization" active="/digitization">
-      <p className="msg warn" role="note">PROTOTYPE WITH SYNTHETIC SAMPLES ONLY. The extracted values below are preset mock results written for the demonstration. No OCR or AI extraction is implemented, none is claimed to be reliable, and no document is uploaded, stored or sent anywhere. Real historical tickets are not handled by this page; any future approved local processing would need F&S authorization and validation against representative documents first.</p>
+    <>
+      <p className="msg warn" role="note">PROTOTYPE WITH SYNTHETIC SAMPLES ONLY. The extracted values below are preset mock results written for the demonstration. No OCR or AI extraction is implemented, none is claimed to be reliable, and no sample is uploaded or sent anywhere. Real tickets go in the “Upload your own documents” tab, where nothing is extracted automatically; any future approved local processing would need F&S authorization and validation against representative documents first.</p>
       <div className="grid row2">
         <div className="grid" style={{ alignContent: "start" }}>
           <div className="card"><h2>Workflow</h2><p style={{ fontSize: 13 }}>Choose a sample document → confirm its type → review the preset extracted fields (confidence is part of the mock preset) → fix flagged fields → approve → export approved records.</p></div>
@@ -72,9 +73,18 @@ function Digitization() {
           <div className="card"><h2>Export</h2><p style={{ fontSize: 13 }}>{approved.length} of {docs.length} approved. Only human-approved records are exported, as an Excel-compatible CSV.</p>
             <Button style={{ marginTop: 8 }} disabled={approved.length === 0} onClick={exp}>Export approved CSV</Button></div>
           <div className="card"><h2>Correction history (this session)</h2>{hist.length === 0 ? <p style={{ fontSize: 13 }}>No corrections yet.</p> : <ul style={{ fontSize: 12.5, paddingLeft: 16 }}>{hist.map((h, i) => <li key={i}>{h.doc} · {h.field}: “{h.from}” → “{h.to}”</li>)}</ul>}
-            <p style={{ fontSize: 12, marginTop: 6 }}>Original mock values are the preset samples above; this prototype does not store documents or review history in a database.</p></div>
+            <p style={{ fontSize: 12, marginTop: 6 }}>Original mock values are the preset samples above; sample review history is not stored; uploaded documents have a stored history in the other tab.</p></div>
         </div>
       </div>
+    </>
+  );
+}
+function Digitization() {
+  const [tab, setTab] = useState<"samples" | "upload">("samples");
+  return (
+    <AppShell title="Records Digitization" active="/digitization">
+      <div className="bar" role="group" aria-label="Digitization view"><Button variant={tab === "samples" ? "default" : "outline"} aria-pressed={tab === "samples"} onClick={() => setTab("samples")}>Synthetic samples</Button><Button variant={tab === "upload" ? "default" : "outline"} aria-pressed={tab === "upload"} onClick={() => setTab("upload")}>Upload your own documents</Button></div>
+      {tab === "samples" ? <Samples /> : <TicketUploads />}
     </AppShell>
   );
 }

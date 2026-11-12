@@ -17,3 +17,10 @@ export const DEMO_TRUCKS: DemoTruck[] = [
   ] },
 ];
 export const MATERIALS = ["Mixed recycling", "Cardboard", "Landfill waste", "Food waste / compost", "Other"];
+
+export type MappingRow = { truck_id: string; truck_label: string; route_id: string; route_label: string; material: string; work_order: string | null; disposal: string };
+export function trucksFromRows(rows: MappingRow[]): DemoTruck[] {
+  const m = new Map<string, DemoTruck>();
+  for (const r of rows) { const t = m.get(r.truck_id) ?? { id: r.truck_id, label: r.truck_label, routes: [] }; t.routes.push({ id: r.route_id, label: r.route_label, material: r.material, workOrder: r.work_order, disposal: r.disposal }); m.set(r.truck_id, t); }
+  return [...m.values()];
+}

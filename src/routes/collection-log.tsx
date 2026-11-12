@@ -5,7 +5,8 @@ import { AppShell } from "../components/shell";
 import { Button } from "../components/ui/button";
 import { downloadCsv } from "../lib/csv";
 import { backend } from "../lib/backend";
-import { DEMO_TRUCKS, MATERIALS } from "../lib/driver-config";
+import { DEMO_TRUCKS as FALLBACK_TRUCKS, MATERIALS, trucksFromRows, type DemoTruck } from "../lib/driver-config";
+import { BUILDINGS } from "../lib/demo";
 import { fmt, useMode, useRecords, useRole, useUser } from "../lib/store";
 
 export const Route = createFileRoute("/collection-log")({
@@ -29,7 +30,7 @@ function Records() {
   );
 }
 
-type Entry = { id: string; entered_at: string; driver_email: string | null; is_demo: boolean; truck: string; route: string; material: string; work_order: string | null; work_order_status: string; disposal_location: string; unit: string; full_weight: number; empty_weight: number; net_weight: number; net_kg: number; notes: string | null; corrections: { field: string; from: string | null; to: string | null }[] };
+type Entry = { id: string; building: string | null; container: string | null; entered_at: string; driver_email: string | null; is_demo: boolean; truck: string; route: string; material: string; work_order: string | null; work_order_status: string; disposal_location: string; unit: string; full_weight: number; empty_weight: number; net_weight: number; net_kg: number; notes: string | null; corrections: { field: string; from: string | null; to: string | null }[] };
 const big: React.CSSProperties = { minHeight: 56, fontSize: 16, padding: "10px 14px", borderRadius: 8, textAlign: "left", width: "100%" };
 const bigIn: React.CSSProperties = { minHeight: 56, fontSize: 18, width: "100%" };
 const WO_LABEL: Record<string, string> = { demo_verified: "Demo-verified mapping (synthetic)", manual: "Entered by driver, unverified", unknown: "Unknown" };
@@ -49,6 +50,9 @@ function Driver() {
   const [unit, setUnit] = useState<"lb" | "kg">("lb"); const [full, setFull] = useState(""); const [empty, setEmpty] = useState(""); const [notes, setNotes] = useState("");
   const [review, setReview] = useState(false); const [msg, setMsg] = useState<{ t: string; err?: boolean } | null>(null); const [saving, setSaving] = useState(false);
   const [n, setN] = useState(0); const [entries, setEntries] = useState<Entry[]>([]); const [listErr, setListErr] = useState("");
+  const [building, setBuilding] = useState(""); const [container, setContainer] = useState("");
+  const [DEMO_TRUCKS, setTrucks] = useState<DemoTruck[]>(FALLBACK_TRUCKS);
+  useEffect(() => { if (!user) return; backend.from("demo_mappings").select("*").eq("active", true).order("truck_id").order("route_id").then(({ data, error }) => { if (!error && data) setTrucks(trucksFromRows(data as any)); }); }, [user?.id]);
   const truck = DEMO_TRUCKS.find((t) => t.id === truckId); const route = truck?.routes.find((r) => r.id === routeId);
   const defaults = demo && route ? { material: route.material, workOrder: route.workOrder ?? "", disposal: route.disposal } : { material: "", workOrder: "", disposal: "" };
   const pickTruck = (id: string) => { setTruckId(id); setRouteId(""); setMaterial(""); setWo(""); setDisp(""); setReview(false); const t = DEMO_TRUCKS.find((x) => x.id === id); if (t?.routes.length === 1) pickRoute(t.routes[0].id, id); };
@@ -76,17 +80,17 @@ function Driver() {
       material_source: !demo ? "manual" : changes.some((c) => c.field === "material") ? "corrected" : "demo_mapping",
       work_order: wo.trim() || null, work_order_status: woStatus, disposal_location: disp.trim(), unit, full_weight: fw, empty_weight: ew, notes: notes.trim() || null,
       original_input: { autofilled_defaults: defaults, source: demo ? "synthetic demonstration mapping" : "none (no authorized mapping configured)", as_entered: { truck: tName, route: rName, material: material.trim(), work_order: wo.trim(), disposal_location: disp.trim(), full_weight: full, empty_weight: empty, unit } },
-      corrections: changes,
+      corrections: changes, building: building.trim() || null, building_source: building.trim() ? "recorded_by_driver" : null, container: container.trim() || null,
     });
     setSaving(false);
     if (error) { setMsg({ t: error.code === "42501" ? "Your role cannot record collections. Ask an administrator for the driver role." : "Not saved: " + error.message, err: true }); return; }
-    setMsg({ t: `Collection saved: net ${fmt(net, 2)} ${unit}.` }); setReview(false); setFull(""); setEmpty(""); setNotes(""); setN((x) => x + 1);
+    setMsg({ t: `Collection saved: net ${fmt(net, 2)} ${unit}.` }); setReview(false); setFull(""); setEmpty(""); setNotes(""); setBuilding(""); setContainer(""); setN((x) => x + 1);
   };
-  const exp = () => downloadCsv(`collection-entries-${demo ? "demo" : "project"}.csv`, [["entered_at_utc", "driver", "data_set", "truck", "route", "material", "work_order", "work_order_status", "disposal_location", "unit", "full_weight", "empty_weight", "net_weight", "net_weight_kg", "notes", "corrections"],
-    ...entries.map((e) => [e.entered_at, e.driver_email, e.is_demo ? "SYNTHETIC DEMO" : "PROJECT", e.truck, e.route, e.material, e.work_order, e.work_order_status, e.disposal_location, e.unit, e.full_weight, e.empty_weight, e.net_weight, Math.round(e.net_kg * 1000) / 1000, e.notes, e.corrections.map((c) => `${c.field}: ${c.from ?? "(blank)"} -> ${c.to ?? "(blank)"}`).join("; ")])]);
+  const exp = () => downloadCsv(`collection-entries-${demo ? "demo" : "project"}.csv`, [["entered_at_utc", "driver", "data_set", "truck", "route", "material", "work_order", "work_order_status", "building", "container", "disposal_location", "unit", "full_weight", "empty_weight", "net_weight", "net_weight_kg", "notes", "corrections"],
+    ...entries.map((e) => [e.entered_at, e.driver_email, e.is_demo ? "SYNTHETIC DEMO" : "PROJECT", e.truck, e.route, e.material, e.work_order, e.work_order_status, e.building ?? "", e.container ?? "", e.disposal_location, e.unit, e.full_weight, e.empty_weight, e.net_weight, Math.round(e.net_kg * 1000) / 1000, e.notes, e.corrections.map((c) => `${c.field}: ${c.from ?? "(blank)"} -> ${c.to ?? "(blank)"}`).join("; ")])]);
   return (
     <div className="grid" style={{ maxWidth: 720 }}>
-      <p className="nx-lead">{demo ? "Demonstration mode: trucks, routes, work orders and disposal locations below are SYNTHETIC examples, not actual UIUC assignments. Entries are saved as demo entries." : "Project mode: no authorized truck, route or work-order mappings are configured, so nothing is filled in for you and work orders stay unknown unless you type one. Nothing here is used from the demo mappings."} This is a proposed supplementary workflow, not connected to university trucks or LoadMan.</p>
+      <p className="nx-lead">{demo ? "Demonstration mode: trucks, routes, work orders and disposal locations below are SYNTHETIC examples, not actual UIUC assignments. Entries are saved as demo entries. An administrator can edit these synthetic mappings in Settings." : "Project mode: no authorized truck, route or work-order mappings are configured, so nothing is filled in for you and work orders stay unknown unless you type one. Nothing here is used from the demo mappings."} This is a proposed supplementary workflow, not connected to university trucks or LoadMan.</p>
       {!user && ready && <p className="msg warn"><Link to="/sign-in" style={{ textDecoration: "underline" }}>Sign in</Link> to record collections; your identity comes from your login.</p>}
       {user && !allowed && <p className="msg warn">Your role is {role.replace("_", " ")}; recording collections needs the driver role (or administrator/researcher). An administrator can grant it in Settings.</p>}
       <div className="card" style={{ display: "grid", gap: 14 }}>
@@ -117,6 +121,8 @@ function Driver() {
           <div className="fld"><label htmlFor="d-empty" style={{ fontSize: 14 }}>Empty weight ({unit})</label><input id="d-empty" className="ctl" style={bigIn} type="number" inputMode="decimal" min="0" step="any" value={empty} onChange={(e) => { setEmpty(e.target.value); setReview(false); }} /></div>
           <div className="card" style={{ background: "#e6f2f2" }} aria-live="polite"><b>Net weight:</b> <span id="d-net" style={{ fontSize: 22, fontWeight: 700 }}>{net == null ? "—" : `${fmt(net, 2)} ${unit}`}</span></div>
           {errs.map((e) => <p key={e} className="msg err" role="alert">{e}</p>)}
+          <div className="fld"><label htmlFor="d-bld" style={{ fontSize: 14 }}>Building (optional — only if you know it; blank stays unknown)</label><input id="d-bld" className="ctl" style={bigIn} list="d-bld-list" maxLength={120} value={building} onChange={(e) => setBuilding(e.target.value)} /><datalist id="d-bld-list">{BUILDINGS.map((b) => <option key={b} value={b} />)}</datalist></div>
+          <div className="fld"><label htmlFor="d-cont" style={{ fontSize: 14 }}>Container ID (optional)</label><input id="d-cont" className="ctl" style={bigIn} maxLength={80} value={container} onChange={(e) => setContainer(e.target.value)} /></div>
           <div className="fld"><label htmlFor="d-notes" style={{ fontSize: 14 }}>Notes (optional)</label><input id="d-notes" className="ctl" style={bigIn} maxLength={1000} value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
           {!review && <Button type="button" style={{ minHeight: 56, fontSize: 17 }} disabled={!ready || !canReview} onClick={() => { setReview(true); setMsg(null); }}>Review entry</Button>}
           {!canReview && user && allowed && missing.length > 0 && <small>Still needed: {missing.join(", ")}.</small>}
@@ -124,7 +130,7 @@ function Driver() {
         {review && net != null && <div className="card" id="d-review" style={{ borderColor: "#17808a", borderWidth: 2 }}><h2>Review before saving</h2>
           <table className="t"><tbody>
             <tr><td>Driver</td><td>{user?.email}</td></tr><tr><td>Truck / route</td><td>{tName} / {rName}</td></tr><tr><td>Material</td><td>{material}</td></tr>
-            <tr><td>Work order</td><td>{wo || "Unknown"} — {WO_LABEL[woStatus]}</td></tr><tr><td>Disposal</td><td>{disp}</td></tr>
+            <tr><td>Work order</td><td>{wo || "Unknown"} — {WO_LABEL[woStatus]}</td></tr><tr><td>Disposal</td><td>{disp}</td></tr><tr><td>Building</td><td>{building.trim() || "Unknown (not recorded)"}</td></tr>
             <tr><td>Weights</td><td>full {full} {unit} − empty {empty} {unit} = <b>{fmt(net, 2)} {unit}</b></td></tr></tbody></table>
           {changes.length > 0 ? <p style={{ fontSize: 13, margin: "8px 0" }}>Corrected from autofill: {changes.map((c) => `${c.field} (${c.from ?? "blank"} → ${c.to ?? "blank"})`).join("; ")}. The original autofilled values are kept with the record.</p> : <p style={{ fontSize: 13, margin: "8px 0" }}>No corrections to autofilled values.</p>}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}><Button type="button" variant="outline" style={{ minHeight: 56 }} onClick={() => setReview(false)}>Edit</Button><Button type="button" style={{ minHeight: 56, fontSize: 17 }} disabled={saving} onClick={save}>{saving ? "Saving…" : "Confirm and save"}</Button></div></div>}
@@ -132,8 +138,8 @@ function Driver() {
       </div>
       <div className="card"><div className="bar" style={{ marginBottom: 8 }}><h2 style={{ margin: 0 }}>{demo ? "Demo entries" : "Project entries"} (yours)</h2><Button variant="outline" size="sm" disabled={entries.length === 0} onClick={exp}>Download Excel-compatible CSV</Button></div>
         {listErr && <p className="msg err">{listErr}</p>}
-        <div className="scroll"><table className="t"><thead><tr><th>Saved</th><th>Truck</th><th>Route</th><th>Material</th><th>Work order</th><th>Disposal</th><th>Net</th></tr></thead>
-          <tbody>{entries.map((e) => <tr key={e.id}><td>{new Date(e.entered_at).toLocaleString()}</td><td>{e.truck}</td><td>{e.route}</td><td>{e.material}</td><td>{e.work_order ?? <em>unknown</em>}</td><td>{e.disposal_location}</td><td>{fmt(e.net_weight, 2)} {e.unit}</td></tr>)}</tbody></table></div>
+        <div className="scroll"><table className="t"><thead><tr><th>Saved</th><th>Truck</th><th>Route</th><th>Material</th><th>Work order</th><th>Building</th><th>Disposal</th><th>Net</th></tr></thead>
+          <tbody>{entries.map((e) => <tr key={e.id}><td>{new Date(e.entered_at).toLocaleString()}</td><td>{e.truck}</td><td>{e.route}</td><td>{e.material}</td><td>{e.work_order ?? <em>unknown</em>}</td><td>{e.building ?? <em>unknown</em>}</td><td>{e.disposal_location}</td><td>{fmt(e.net_weight, 2)} {e.unit}</td></tr>)}</tbody></table></div>
         {entries.length === 0 && <p style={{ fontSize: 13, padding: 6 }}>{user ? "No entries saved yet." : "Sign in to see your entries."}</p>}
         <p style={{ fontSize: 12, marginTop: 6 }}>Only you (and administrators) can read your entries. Saved entries cannot be edited or deleted; original autofilled values and corrections stay with each record.</p></div>
     </div>

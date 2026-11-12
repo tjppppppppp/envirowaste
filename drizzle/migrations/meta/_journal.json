@@ -29,6 +29,13 @@
       "when": 1794458920028,
       "tag": "0003_collection_entries_table",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794460116300,
+      "tag": "0004_add_mappings_ticket_documents_driver_building_fi",
+      "breakpoints": true
     }
   ]
 }

@@ -4,10 +4,10 @@ import { AppShell } from "../components/shell";
 import { Button } from "../components/ui/button";
 import { backend } from "../lib/backend";
 import { FIELDS, normDate, normWeight, parseCsv, suggest, downloadCsv } from "../lib/csv";
-import { fmt, useRole, useUser } from "../lib/store";
+import { fmt, useAudits, useMode, useRole, useUser } from "../lib/store";
 
 export const Route = createFileRoute("/explorer")({
-  head: () => ({ meta: [{ title: "Waste Explorer — EnviroTrap Nexus" }, { name: "description", content: "Import a LoadMan-style CSV, map columns, validate, flag duplicates and save normalized records privately." }] }),
+  head: () => ({ meta: [{ title: "Waste Explorer — EnviroTrap Nexus" }, { name: "description", content: "Import a LoadMan-style CSV or Excel (.xlsx) file, map columns, validate, flag duplicates and save normalized records privately." }] }),
   component: Explorer,
 });
 
@@ -36,7 +36,20 @@ function Explorer() {
   };
   const onFile = async (f: File | undefined) => {
     if (!f) return; if (f.size > 5_000_000) { setMsg({ t: "Files over 5 MB are not accepted.", err: true }); return; }
-    if (!/\.csv$/i.test(f.name)) { setMsg({ t: "Only CSV files are supported in this version; export Excel sheets as CSV first.", err: true }); return; }
+    if (/\.xlsx$/i.test(f.name)) {
+      try {
+        const buf = new Uint8Array(await f.slice(0, 4).arrayBuffer());
+        if (buf[0] !== 0x50 || buf[1] !== 0x4b) throw new Error("not a zip");
+        const { readSheet } = await import("read-excel-file/browser");
+        const sheet = await readSheet(f);
+        const cell = (c: any) => c == null ? "" : c instanceof Date ? c.toISOString().slice(0, 10) : String(c);
+        const r = sheet.map((row: any[]) => row.map(cell)).filter((row: string[]) => row.some((x) => x.trim()));
+        if (r.length < 2) { setMsg({ t: "The first sheet has no data rows.", err: true }); return; }
+        setRows(r); setName(f.name); setMap(suggest(r[0])); setMsg({ t: "Read the first sheet of " + f.name + ". Check the column mapping below." });
+      } catch { setMsg({ t: "That file could not be read as a valid .xlsx workbook. Save it as .xlsx or CSV and try again.", err: true }); }
+      return;
+    }
+    if (!/\.csv$/i.test(f.name)) { setMsg({ t: "Supported files: .xlsx and .csv (legacy .xls is not supported; save it as .xlsx or CSV).", err: true }); return; }
     load(await f.text(), f.name);
   };
   const prep: Prep[] = useMemo(() => {
@@ -77,13 +90,13 @@ function Explorer() {
   };
   return (
     <AppShell title="Waste Explorer" active="/explorer">
-      <p className="nx-lead">Import a LoadMan-style CSV, confirm the column mapping, review validation, then save. Originals are kept untouched; every change is recorded. Missing values stay missing, never zero.</p>
+      <p className="nx-lead">Import a LoadMan-style CSV or Excel (.xlsx) file, confirm the column mapping, review validation, then save. Originals are kept untouched; every change is recorded. Missing values stay missing, never zero.</p>
       {!user && ready && <p className="msg warn">You can parse and preview without an account. <Link to="/sign-in" style={{ textDecoration: "underline" }}>Sign in</Link> to save records privately.</p>}
       {user && !canWrite && <p className="msg warn">Your role is {role}. Importing needs the researcher or administrator role, set by an administrator in Settings.</p>}
       <div className="card">
         <h2>1. Upload</h2>
         <div className="bar">
-          <input type="file" accept=".csv,text/csv" aria-label="CSV file" data-ready={ready} onChange={(e) => onFile(e.target.files?.[0])} />
+          <input type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" aria-label="CSV or Excel file" data-ready={ready} onChange={(e) => onFile(e.target.files?.[0])} />
           <Button variant="outline" size="sm" onClick={() => load(SAMPLE, "sample-loadman.csv")}>Load a small example file</Button>
         </div>
         {msg && <p className={"msg" + (msg.err ? " err" : "")} role="status" style={{ marginTop: 8 }}>{msg.t}</p>}
@@ -113,9 +126,46 @@ function Explorer() {
           </div>
         </div>
       </>)}
+      <DriverEntries />
       {user && <div className="card"><h2>Your saved imports</h2>
         {batches.length === 0 ? <p style={{ fontSize: 13 }}>None yet.</p> : <div className="scroll"><table className="t"><thead><tr><th>File</th><th>Saved</th><th>Records</th><th>Duplicates</th><th>Need investigation</th></tr></thead><tbody>{batches.map((b) => <tr key={b.id}><td>{b.filename}</td><td>{new Date(b.created_at).toLocaleDateString()}</td><td>{fmt(b.summary?.total ?? 0)}</td><td>{b.summary?.dup ?? 0}</td><td>{b.summary?.inv ?? 0}</td></tr>)}</tbody></table></div>}
       </div>}
     </AppShell>
+  );
+}
+
+type DE = { id: string; entered_at: string; is_demo: boolean; truck: string; route: string; material: string; building: string | null; container: string | null; net_kg: number; work_order_status: string };
+function DriverEntries() {
+  const mode = useMode(); const demo = mode === "demo"; const { user } = useUser(); const { role } = useRole(user); const { audits } = useAudits(mode);
+  const [es, setEs] = useState<DE[]>([]); const [err, setErr] = useState("");
+  useEffect(() => {
+    if (!user) { setEs([]); return; }
+    backend.from("collection_entries").select("id,entered_at,is_demo,truck,route,material,building,container,net_kg,work_order_status").eq("is_demo", demo).order("entered_at", { ascending: false }).limit(2000)
+      .then(({ data, error }) => { setErr(error ? error.message : ""); setEs((data ?? []).map((r: any) => ({ ...r, net_kg: Number(r.net_kg) }))); });
+  }, [user?.id, demo]);
+  const tot = es.reduce((a, e) => a + (isFinite(e.net_kg) ? e.net_kg : 0), 0);
+  const withB = es.filter((e) => e.building); const noB = es.length - withB.length;
+  const by = new Map<string, { n: number; kg: number; mats: Set<string> }>();
+  for (const e of withB) { const x = by.get(e.building!) ?? { n: 0, kg: 0, mats: new Set<string>() }; x.n++; x.kg += e.net_kg; x.mats.add(e.material); by.set(e.building!, x); }
+  const rowsB = [...by.entries()].sort((a, b) => b[1].kg - a[1].kg).map(([b, x]) => { const a = audits.filter((u) => u.building === b).sort((p, q) => q.audit_date.localeCompare(p.audit_date))[0]; return { b, ...x, a }; });
+  const exp = () => downloadCsv(`driver-entries-attribution-${demo ? "demo" : "project"}.csv`, [["data_set", "building", "building_provenance", "entries", "net_kg", "materials", "latest_audit_date", "latest_audit_contamination_pct"],
+    ...rowsB.map((r) => [demo ? "SYNTHETIC DEMO" : "PROJECT", r.b, "recorded by driver", r.n, Math.round(r.kg * 100) / 100, [...r.mats].join("; "), r.a?.audit_date ?? "", r.a?.contamination_pct ?? ""]),
+    [demo ? "SYNTHETIC DEMO" : "PROJECT", "(unknown)", "no building recorded", noB, Math.round(es.filter((e) => !e.building).reduce((a, e) => a + e.net_kg, 0) * 100) / 100, "", "", ""]]);
+  return (
+    <div className="card" id="driver-entries"><h2>Driver collection entries — {demo ? "SYNTHETIC DEMO data set" : "project data set"}</h2>
+      <p style={{ fontSize: 13 }}>Source: the Collection Log driver form (a proposed supplementary workflow, not LoadMan). Demo and project entries are never combined. An entry is attributed to a building only when the driver recorded one; otherwise the building is unknown. Entries are not matched to individual LoadMan pickups, and the audit comparison shows side-by-side figures only, not cause or effect.{" "}
+        {role === "driver" || role === "viewer" ? "You see only your own entries." : "Your role can read all drivers' entries."}</p>
+      {!user && <p className="msg warn"><Link to="/sign-in" style={{ textDecoration: "underline" }}>Sign in</Link> to see driver entries.</p>}
+      {err && <p className="msg err">{err}</p>}
+      {user && <>
+        <div className="grid kpis" style={{ margin: "8px 0" }}>
+          {[["Entries", fmt(es.length)], ["Net weight recorded (kg)", fmt(tot, 1)], ["Building recorded by driver", fmt(withB.length)], ["Building unknown", fmt(noB)]].map(([l, v]) => <div key={l} className="card kpi"><b style={{ fontSize: 22 }}>{v}</b><span className="l">{l}</span></div>)}
+        </div>
+        {es.length === 0 ? <p style={{ fontSize: 13 }}>No {demo ? "demo" : "project"} driver entries visible to you yet.</p> :
+          <div className="scroll"><table className="t"><thead><tr><th>Building (recorded)</th><th>Entries</th><th>Net kg</th><th>Materials</th><th>Latest audit contamination</th></tr></thead><tbody>
+            {rowsB.map((r) => <tr key={r.b}><td>{r.b}</td><td>{r.n}</td><td>{fmt(r.kg, 1)}</td><td>{[...r.mats].join(", ")}</td><td>{r.a ? (r.a.contamination_pct == null ? <em>unknown</em> : r.a.contamination_pct + "%") + " (" + r.a.audit_date + ", " + r.a.method + ")" : <em>no audit</em>}</td></tr>)}
+            <tr><td><em>Unknown building</em></td><td>{noB}</td><td>{fmt(es.filter((e) => !e.building).reduce((a, e) => a + e.net_kg, 0), 1)}</td><td colSpan={2}>Not attributed — building was not recorded.</td></tr></tbody></table></div>}
+        <div className="bar" style={{ marginTop: 8 }}><Button variant="outline" size="sm" disabled={es.length === 0} onClick={exp}>Export attribution CSV</Button></div></>}
+    </div>
   );
 }
