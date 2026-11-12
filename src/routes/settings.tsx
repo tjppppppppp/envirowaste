@@ -6,7 +6,7 @@ import { MappingAdmin } from "../components/mapping-admin";
 import { useRole, useUser, type Role } from "../lib/store";
 
 export const Route = createFileRoute("/settings")({
-  head: () => ({ meta: [{ title: "Settings & Guide — EnviroTrap Nexus" }, { name: "description", content: "Your account and role, plus a short guide to running the demonstration, the architecture and the prototype's limits." }] }),
+  head: () => ({ meta: [{ title: "Settings & Guide — EnviroWaste" }, { name: "description", content: "Your account and role, plus a short guide to running the demonstration, the architecture and the prototype's limits." }] }),
   component: Settings,
 });
 const ROLES: Role[] = ["viewer", "driver", "fs_staff", "researcher", "administrator"];
@@ -55,7 +55,7 @@ function Settings() {
           <li>The Microsoft export format (columns, Excel or CSV, Forms/SharePoint expectations).</li>
           <li>Institution security approvals required before any real operational data or documents are used.</li>
         </ul>
-        <p style={{ fontSize: 13, marginTop: 6 }}>EnviroTrap Nexus is an independent prototype, not UIUC-approved for production.</p></div>
+        <p style={{ fontSize: 13, marginTop: 6 }}>EnviroWaste is an independent prototype, not UIUC-approved for production.</p></div>
       <div className="grid two">
         <div className="card"><h2>Architecture and data</h2><p style={{ fontSize: 13, lineHeight: 1.6 }}>A React web app with a hosted PostgreSQL database. Row-level rules keep each person's rows private; research writes need the researcher or administrator role, and collection entries (collection_entries: identity and timestamp set by the database, net weight calculated by the database, original autofill and corrections kept, no edits or deletes) can be written by driver, researcher or administrator roles only. Tables: import_batches (file, mapping, quality summary), import_records (the original row untouched, plus normalized date, kg weight, building, container, stream, flags and a list of transformations), audits (with per-material measurements), insight_reviews and user_roles. Demo data is generated in code and never stored with real data.</p></div>
         <div className="card"><h2>Limitations</h2><ul style={{ fontSize: 13, lineHeight: 1.6, paddingLeft: 16 }}>

@@ -26,8 +26,8 @@ export function AppShell({ title, children, active }: { title: string; children:
     <div className="nx">
       <aside className={"nx-side" + (open ? " open" : "")}>
         <div className="nx-brand">
-          <Image src="/generated-assets/company-logo.png" alt="EnviroTrap Nexus logo" width={40} height={40} />
-          <span className="nx-name">EnviroTrap Nexus</span>
+          <Image src="/generated-assets/company-logo.png" alt="EnviroWaste logo" width={40} height={40} />
+          <span className="nx-name">EnviroWaste</span>
           <button className="nx-burger" aria-label="Toggle navigation" aria-expanded={open} onClick={() => setOpen(!open)}><Menu size={22} /></button>
         </div>
         <nav aria-label="Main" className="nx-nav">

@@ -8,7 +8,7 @@ import { BUILDINGS, ROUTES, SOURCES, STREAMS } from "../lib/demo";
 import { fmt, useAudits, useRecords } from "../lib/store";
 
 export const Route = createFileRoute("/")({
-  head: () => ({ meta: [{ title: "Overview — EnviroTrap Nexus" }, { name: "description", content: "Collection trends, attribution completeness, measured composition and data quality for campus waste research." }] }),
+  head: () => ({ meta: [{ title: "Overview — EnviroWaste" }, { name: "description", content: "Collection trends, attribution completeness, measured composition and data quality for campus waste research." }] }),
   component: Overview,
 });
 
@@ -92,7 +92,7 @@ export function Overview() {
             </div>
           </div>
         </div>
-        <div className="stamp" aria-hidden><b>RESEARCH</b><small>ENVIROTRAP NEXUS<br />UIUC · {new Date().getFullYear()}</small></div>
+        <div className="stamp" aria-hidden><b>RESEARCH</b><small>ENVIROWASTE<br />UIUC · {new Date().getFullYear()}</small></div>
       </section>
     </AppShell>
   );

@@ -11,7 +11,7 @@ import { BUILDINGS } from "../lib/demo";
 import { fmt, setMode, useAudits, useRecords, useRole, useUser } from "../lib/store";
 
 export const Route = createFileRoute("/audits")({
-  head: () => ({ meta: [{ title: "Waste Audits — EnviroTrap Nexus" }, { name: "description", content: "Plan and record physical waste composition audits and compare them with available collection data." }] }),
+  head: () => ({ meta: [{ title: "Waste Audits — EnviroWaste" }, { name: "description", content: "Plan and record physical waste composition audits and compare them with available collection data." }] }),
   component: Audits,
 });
 const STATUSES = ["Planned", "In Progress", "Under Review", "Completed"];

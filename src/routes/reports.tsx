@@ -6,7 +6,7 @@ import { insights, stats, weekly } from "../lib/analysis";
 import { fmt, useAudits, useRecords } from "../lib/store";
 
 export const Route = createFileRoute("/reports")({
-  head: () => ({ meta: [{ title: "Reports — EnviroTrap Nexus" }, { name: "description", content: "Generate and export a research summary from the selected dataset and audits." }] }),
+  head: () => ({ meta: [{ title: "Reports — EnviroWaste" }, { name: "description", content: "Generate and export a research summary from the selected dataset and audits." }] }),
   component: Reports,
 });
 function Reports() {
@@ -15,7 +15,7 @@ function Reports() {
     const s = stats(records); const wk = weekly(records); const ins = insights(records, audits);
     const dates = records.map((r) => r.date).filter(Boolean).sort();
     setText([
-      `EnviroTrap Nexus research summary`, `Generated ${new Date().toLocaleString()}`,
+      `EnviroWaste research summary`, `Generated ${new Date().toLocaleString()}`,
       mode === "demo" ? "DATA: DEMO DATA — NOT ACTUAL UIUC OPERATIONAL RECORDS" : "DATA: project records uploaded by the signed-in user",
       "", "COLLECTION RECORDS",
       s.n ? `${fmt(s.n)} records${dates.length ? ` dated ${dates[0]} to ${dates[dates.length - 1]}` : ""}; ${fmt(s.total, 1)} t recorded across ${wk.length} weeks (records without weight excluded, not counted as zero: ${s.missingWeight}).` : "No collection records in this dataset.",

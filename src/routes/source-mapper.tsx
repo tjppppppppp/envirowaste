@@ -4,7 +4,7 @@ import { AppShell } from "../components/shell";
 import { fmt, useAudits, useRecords } from "../lib/store";
 
 export const Route = createFileRoute("/source-mapper")({
-  head: () => ({ meta: [{ title: "Source Mapper — EnviroTrap Nexus" }, { name: "description", content: "Searchable building directory showing linked records, containers, streams, weights and audits, with each journey link marked verified, inferred or unknown." }] }),
+  head: () => ({ meta: [{ title: "Source Mapper — EnviroWaste" }, { name: "description", content: "Searchable building directory showing linked records, containers, streams, weights and audits, with each journey link marked verified, inferred or unknown." }] }),
   component: Mapper,
 });
 

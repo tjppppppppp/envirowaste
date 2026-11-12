@@ -6,7 +6,7 @@ import { downloadCsv } from "../lib/csv";
 import { TicketUploads } from "../components/ticket-uploads";
 
 export const Route = createFileRoute("/digitization")({
-  head: () => ({ meta: [{ title: "Records Digitization — EnviroTrap Nexus" }, { name: "description", content: "Prototype of a document-to-structured-data workflow using synthetic sample tickets, preset mock extraction and human approval." }] }),
+  head: () => ({ meta: [{ title: "Records Digitization — EnviroWaste" }, { name: "description", content: "Prototype of a document-to-structured-data workflow using synthetic sample tickets, preset mock extraction and human approval." }] }),
   component: Digitization,
 });
 const FIELDS = ["ticket_no", "date", "truck", "material", "gross_lb", "tare_lb", "net_lb", "disposal_site"] as const;

@@ -7,7 +7,7 @@ import { backend } from "../lib/backend";
 import { finishGoogleSignIn, signInWithGoogle } from "../integrations/foundable/sign-in";
 
 export const Route = createFileRoute("/sign-in")({
-  head: () => ({ meta: [{ title: "Sign in — EnviroTrap Nexus" }, { name: "description", content: "Sign in to keep your uploaded records and audits private to your account." }] }),
+  head: () => ({ meta: [{ title: "Sign in — EnviroWaste" }, { name: "description", content: "Sign in to keep your uploaded records and audits private to your account." }] }),
   component: SignIn,
 });
 function SignIn() {

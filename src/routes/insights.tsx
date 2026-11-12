@@ -6,7 +6,7 @@ import { insights } from "../lib/analysis";
 import { useAudits, useRecords, useRole, useUser } from "../lib/store";
 
 export const Route = createFileRoute("/insights")({
-  head: () => ({ meta: [{ title: "Insights — EnviroTrap Nexus" }, { name: "description", content: "Evidence-based research insights with source, uncertainty, missing attribution and human-review status." }] }),
+  head: () => ({ meta: [{ title: "Insights — EnviroWaste" }, { name: "description", content: "Evidence-based research insights with source, uncertainty, missing attribution and human-review status." }] }),
   component: Insights,
 });
 const ST = ["Under Investigation", "Validated", "Rejected", "Recommended for Action"];

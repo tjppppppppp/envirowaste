@@ -9,7 +9,7 @@ import "../styles.css";
 import "../app.css";
 
 // Link previews read the Open Graph and X tags below; og:title and og:description repeat the page's own title and description.
-const title = "EnviroTrap Nexus — From collection to characterization to action";
+const title = "EnviroWaste — From collection to characterization to action";
 const description = "A research workspace for UIUC campus waste: import collection records, map sources, run waste audits and export evidence-based research summaries.";
 
 export const Route = createRootRoute({

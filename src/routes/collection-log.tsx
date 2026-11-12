@@ -10,7 +10,7 @@ import { BUILDINGS } from "../lib/demo";
 import { fmt, useMode, useRecords, useRole, useUser } from "../lib/store";
 
 export const Route = createFileRoute("/collection-log")({
-  head: () => ({ meta: [{ title: "Collection Log — EnviroTrap Nexus" }, { name: "description", content: "Mobile driver collection form with contextual autofill and net-weight calculation, plus a browsable log of collection records; unknown values stay unknown." }] }),
+  head: () => ({ meta: [{ title: "Collection Log — EnviroWaste" }, { name: "description", content: "Mobile driver collection form with contextual autofill and net-weight calculation, plus a browsable log of collection records; unknown values stay unknown." }] }),
   component: Log,
 });
 function Records() {

@@ -7,7 +7,7 @@ import { FIELDS, normDate, normWeight, parseCsv, suggest, downloadCsv } from "..
 import { fmt, useAudits, useMode, useRole, useUser } from "../lib/store";
 
 export const Route = createFileRoute("/explorer")({
-  head: () => ({ meta: [{ title: "Waste Explorer — EnviroTrap Nexus" }, { name: "description", content: "Import a LoadMan-style CSV or Excel (.xlsx) file, map columns, validate, flag duplicates and save normalized records privately." }] }),
+  head: () => ({ meta: [{ title: "Waste Explorer — EnviroWaste" }, { name: "description", content: "Import a LoadMan-style CSV or Excel (.xlsx) file, map columns, validate, flag duplicates and save normalized records privately." }] }),
   component: Explorer,
 });
 

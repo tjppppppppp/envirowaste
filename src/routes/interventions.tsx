@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "../components/shell";
 
 export const Route = createFileRoute("/interventions")({
-  head: () => ({ meta: [{ title: "Interventions — EnviroTrap Nexus" }, { name: "description", content: "Intervention tracking is planned for a later phase." }] }),
+  head: () => ({ meta: [{ title: "Interventions — EnviroWaste" }, { name: "description", content: "Intervention tracking is planned for a later phase." }] }),
   component: () => (
     <AppShell title="Interventions" active="/interventions">
       <div className="card" style={{ maxWidth: 640 }}>
