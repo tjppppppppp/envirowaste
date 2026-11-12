@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1794456308640,
+      "tag": "0000_create_research_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794456336990,
+      "tag": "0001_role_gated_writes",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794456622834,
+      "tag": "0002_let_owners_delete_failed_batch",
+      "breakpoints": true
+    }
+  ]
+}
