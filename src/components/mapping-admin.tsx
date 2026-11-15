@@ -6,6 +6,50 @@ import { Button } from "./ui/button";
 type Row = MappingRow & { id: string; active: boolean; updated_by: string | null; updated_at: string };
 const blank = { truck_id: "DEMO-T1", truck_label: "DEMO Truck 1 (synthetic)", route_id: "", route_label: "DEMO Route ", material: MATERIALS[0], work_order: "", disposal: "DEMO " };
 
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+type Sch = { id: string; truck_id: string; route_id: string; weekday: number; start_time: string; end_time: string; active: boolean };
+export function ScheduleAdmin({ email }: { email: string }) {
+  const [rows, setRows] = useState<Sch[]>([]); const [n, setN] = useState(0); const [msg, setMsg] = useState<{ t: string; err?: boolean } | null>(null);
+  const [nw, setNw] = useState({ truck_id: "DEMO-T1", route_id: "DEMO-R-A", weekday: 1, start_time: "06:00", end_time: "12:00" });
+  useEffect(() => { backend.from("demo_route_schedules").select("*").order("truck_id").order("route_id").order("weekday").then(({ data }) => setRows((data ?? []) as Sch[])); }, [n]);
+  const edit = (id: string, k: string, v: any) => setRows(rows.map((r) => (r.id === id ? { ...r, [k]: v } : r)));
+  const ok = (r: { start_time: string; end_time: string }) => /^[0-2]\d:[0-5]\d$/.test(r.start_time) && /^[0-2]\d:[0-5]\d$/.test(r.end_time) && r.start_time < r.end_time;
+  const save = async (r: Sch) => {
+    if (!ok(r)) { setMsg({ t: "Use HH:MM times (24-hour) with the start before the end.", err: true }); return; }
+    const { error } = await backend.from("demo_route_schedules").update({ weekday: r.weekday, start_time: r.start_time, end_time: r.end_time, active: r.active, updated_by: email, updated_at: new Date().toISOString() }).eq("id", r.id);
+    setMsg(error ? { t: error.code === "42501" ? "Only administrators can change schedules." : error.code === "23505" ? "That route already has a window on that day." : error.message, err: true } : { t: "Schedule saved." }); setN((x) => x + 1);
+  };
+  const del = async (r: Sch) => { const { error } = await backend.from("demo_route_schedules").delete().eq("id", r.id); setMsg(error ? { t: error.message, err: true } : { t: "Schedule window removed." }); setN((x) => x + 1); };
+  const add = async () => {
+    if (!/^DEMO/.test(nw.truck_id) || !/^DEMO/.test(nw.route_id)) { setMsg({ t: "Truck and route ids must start with DEMO.", err: true }); return; }
+    if (!ok(nw)) { setMsg({ t: "Use HH:MM times (24-hour) with the start before the end.", err: true }); return; }
+    const { error } = await backend.from("demo_route_schedules").insert({ ...nw, updated_by: email });
+    setMsg(error ? { t: error.code === "42501" ? "Only administrators can add schedules." : error.code === "23505" ? "That route already has a window on that day." : error.message, err: true } : { t: "Schedule window added." }); setN((x) => x + 1);
+  };
+  return (
+    <div className="card" id="schedules"><h2>DEMO route schedule examples (administrators only)</h2>
+      <p style={{ fontSize: 13 }}>SYNTHETIC example windows that narrow a driver's route choices in the Collection Log demo. They are not real UIUC route times or verified mappings. Drivers can always show all routes or enter values by hand.</p>
+      {msg && <p className={"msg" + (msg.err ? " err" : "")} role="status">{msg.t}</p>}
+      <div className="scroll"><table className="t"><thead><tr><th>Truck</th><th>Route</th><th>Day</th><th>Start</th><th>End</th><th>Active</th><th /></tr></thead><tbody>
+        {rows.map((r) => <tr key={r.id}><td>{r.truck_id}</td><td>{r.route_id}</td>
+          <td><select aria-label={`Day ${r.route_id}`} value={r.weekday} onChange={(e) => edit(r.id, "weekday", Number(e.target.value))}>{DAYS.map((d, i) => <option key={d} value={i}>{d}</option>)}</select></td>
+          <td><input aria-label={`Start ${r.route_id}`} value={r.start_time} maxLength={5} onChange={(e) => edit(r.id, "start_time", e.target.value)} /></td>
+          <td><input aria-label={`End ${r.route_id}`} value={r.end_time} maxLength={5} onChange={(e) => edit(r.id, "end_time", e.target.value)} /></td>
+          <td><input type="checkbox" aria-label={`Active ${r.route_id}`} checked={r.active} onChange={(e) => edit(r.id, "active", e.target.checked)} /></td>
+          <td><Button size="sm" variant="outline" onClick={() => save(r)}>Save</Button> <Button size="sm" variant="outline" onClick={() => del(r)}>Remove</Button></td></tr>)}</tbody></table></div>
+      <h3 style={{ marginTop: 12 }}>Add a window</h3>
+      <div className="form">
+        <div className="fld"><label htmlFor="ns-t">Truck id</label><input id="ns-t" value={nw.truck_id} onChange={(e) => setNw({ ...nw, truck_id: e.target.value })} /></div>
+        <div className="fld"><label htmlFor="ns-r">Route id</label><input id="ns-r" value={nw.route_id} onChange={(e) => setNw({ ...nw, route_id: e.target.value })} /></div>
+        <div className="fld"><label htmlFor="ns-d">Day</label><select id="ns-d" value={nw.weekday} onChange={(e) => setNw({ ...nw, weekday: Number(e.target.value) })}>{DAYS.map((d, i) => <option key={d} value={i}>{d}</option>)}</select></div>
+        <div className="fld"><label htmlFor="ns-s">Start (HH:MM)</label><input id="ns-s" value={nw.start_time} onChange={(e) => setNw({ ...nw, start_time: e.target.value })} /></div>
+        <div className="fld"><label htmlFor="ns-e">End (HH:MM)</label><input id="ns-e" value={nw.end_time} onChange={(e) => setNw({ ...nw, end_time: e.target.value })} /></div>
+      </div>
+      <Button style={{ marginTop: 8 }} onClick={add}>Add window</Button>
+    </div>
+  );
+}
+
 export function MappingAdmin({ email }: { email: string }) {
   const [rows, setRows] = useState<Row[]>([]); const [msg, setMsg] = useState<{ t: string; err?: boolean } | null>(null); const [n, setN] = useState(0);
   const [log, setLog] = useState<any[]>([]); const [nw, setNw] = useState(blank);

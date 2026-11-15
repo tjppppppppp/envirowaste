@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell } from "../components/shell";
-import { fmt, useAudits, useRecords } from "../lib/store";
+import { fmt, useAudits, useDriverEntries, useRecords } from "../lib/store";
 
 export const Route = createFileRoute("/source-mapper")({
   head: () => ({ meta: [{ title: "Source Mapper — EnviroWaste" }, { name: "description", content: "Searchable building directory showing linked records, containers, streams, weights and audits, with each journey link marked verified, inferred or unknown." }] }),
@@ -10,6 +10,7 @@ export const Route = createFileRoute("/source-mapper")({
 
 function Mapper() {
   const { mode, records, signedIn } = useRecords(); const { audits } = useAudits(mode);
+  const { entries: dEntries } = useDriverEntries(mode === "demo");
   const [q, setQ] = useState(""); const [sel, setSel] = useState<string | null>(null);
   const dir = useMemo(() => {
     const m = new Map<string, typeof records>(); for (const r of records) { const k = r.building ?? ""; m.set(k, [...(m.get(k) ?? []), r]); }
@@ -22,17 +23,19 @@ function Mapper() {
   const ba = audits.filter((a) => a.building === cur);
   const loadman = recs.some((r) => r.source === "LoadMan export");
   const missing = [recs.some((r) => !r.container) && `${recs.filter((r) => !r.container).length} records without a container ID`, w.length < recs.length && `${recs.length - w.length} records without a weight`, ba.length === 0 && "No waste audit for this building", "Geographic coordinates are not available; no map position is shown"].filter(Boolean) as string[];
+  const dest = [...new Set(dEntries.filter((e) => e.building === cur).map((e) => e.disposal_location).filter(Boolean))];
   const journey = [
     { n: "Campus Building", s: "Verified", d: cur ? `${cur} appears in ${recs.length} records.` : "" },
     { n: "Collection Point", s: conts.length ? "Verified" : "Unknown", d: conts.length ? `Container IDs on records: ${conts.join(", ")}.` : "No container ID links this building to a collection point." },
     { n: "Truck Pickup", s: recs.length && conts.length ? "Verified" : recs.length ? "Inferred" : "Unknown", d: recs.length && conts.length ? "Pickup records carry the container ID." : "Pickups are attributed to the building but not to a container." },
     { n: "Waste Transfer Station", s: loadman ? "Inferred" : "Unknown", d: loadman ? "Truck-weight records imply a weigh event; station confirmation is not in the data." : "No record shows the station." },
-    { n: "Downstream Destination", s: "Unknown", d: "Hauling and disposal records are not loaded." },
+    { n: "Downstream Destination", s: dest.length ? "Inferred" : "Unknown", d: dest.length ? `Driver-recorded intended destination: ${dest.join("; ")}. A driver entry is not a receiving-site record, so the endpoint is not verified.` : "No hauling or disposal record links this building to a destination." },
   ];
   return (
     <AppShell title="Source Mapper" active="/source-mapper">
       <p className="nx-lead">A searchable building directory and schematic journey. Locations are never invented: where a link is not in the records it is shown as unknown.</p>
       {mode === "project" && records.length === 0 && <p className="msg warn">{signedIn ? "Import a CSV in Waste Explorer to build your directory." : "Sign in to see your own records."}</p>}
+      <p className="msg warn" style={{ fontSize: 12.5 }}><b>Verified</b>: a record states the link. <b>Inferred</b>: suggested by related records but not stated. <b>Unknown</b>: no record supports it. Destinations come only from driver entries and are never treated as confirmed endpoints.</p>
       <div className="grid" style={{ gridTemplateColumns: "minmax(0,260px) minmax(0,1fr)" }}>
         <div className="card">
           <label htmlFor="bq" className="sr-only">Search buildings</label>

@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AppShell } from "../components/shell";
 import { backend } from "../lib/backend";
-import { MappingAdmin } from "../components/mapping-admin";
+import { MappingAdmin, ScheduleAdmin } from "../components/mapping-admin";
 import { useRole, useUser, type Role } from "../lib/store";
 
 export const Route = createFileRoute("/settings")({
@@ -22,6 +22,7 @@ function Settings() {
       {role === "administrator" && user && <div className="card"><h2>Users and roles</h2>{msg && <p className="msg" role="status">{msg}</p>}
         <table className="t"><thead><tr><th>User ID</th><th>Organization</th><th>Role</th></tr></thead><tbody>{rows.map((r) => <tr key={r.user_id}><td>{r.user_id}</td><td>{r.organization}</td><td><select aria-label={"Role for " + r.user_id} value={r.role} onChange={(e) => change(r.user_id, e.target.value)}>{ROLES.map((x) => <option key={x}>{x}</option>)}</select></td></tr>)}</tbody></table></div>}
       {role === "administrator" && user && <MappingAdmin email={user.email} />}
+      {role === "administrator" && user && <ScheduleAdmin email={user.email} />}
       <div className="card"><h2>Guide: run the demonstration</h2>
         <ol style={{ paddingLeft: 18, fontSize: 13, lineHeight: 1.7 }}>
           <li>Open Overview in Demo mode and use the filters; unknown values show hatched, never as zero.</li>

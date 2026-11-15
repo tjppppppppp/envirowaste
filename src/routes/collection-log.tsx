@@ -53,6 +53,10 @@ function Driver() {
   const [building, setBuilding] = useState(""); const [container, setContainer] = useState("");
   const [DEMO_TRUCKS, setTrucks] = useState<DemoTruck[]>(FALLBACK_TRUCKS);
   useEffect(() => { if (!user) return; backend.from("demo_mappings").select("*").eq("active", true).order("truck_id").order("route_id").then(({ data, error }) => { if (!error && data) setTrucks(trucksFromRows(data as any)); }); }, [user?.id]);
+  const [sched, setSched] = useState<{ truck_id: string; route_id: string; weekday: number; start_time: string; end_time: string }[]>([]); const [allRoutes, setAllRoutes] = useState(false);
+  useEffect(() => { if (!user) return; backend.from("demo_route_schedules").select("truck_id,route_id,weekday,start_time,end_time").eq("active", true).then(({ data }) => setSched(data ?? [])); }, [user?.id]);
+  const hhmm = now ? String(now.getHours()).padStart(2, "0") + ":" + String(now.getMinutes()).padStart(2, "0") : "";
+  const runsNow = (tid: string, rid: string) => sched.some((x) => x.truck_id === tid && x.route_id === rid && now && x.weekday === now.getDay() && x.start_time <= hhmm && hhmm < x.end_time);
   const truck = DEMO_TRUCKS.find((t) => t.id === truckId); const route = truck?.routes.find((r) => r.id === routeId);
   const defaults = demo && route ? { material: route.material, workOrder: route.workOrder ?? "", disposal: route.disposal } : { material: "", workOrder: "", disposal: "" };
   const pickTruck = (id: string) => { setTruckId(id); setRouteId(""); setMaterial(""); setWo(""); setDisp(""); setReview(false); const t = DEMO_TRUCKS.find((x) => x.id === id); if (t?.routes.length === 1) pickRoute(t.routes[0].id, id); };
@@ -102,7 +106,11 @@ function Driver() {
           <fieldset style={{ border: 0, padding: 0, display: "grid", gap: 8 }}><legend style={{ fontWeight: 600, marginBottom: 6 }}>1. Truck (synthetic)</legend>
             {DEMO_TRUCKS.map((t) => <Choice key={t.id} on={t.id === truckId} onClick={() => pickTruck(t.id)}>{t.label}</Choice>)}</fieldset>
           {truck && <fieldset style={{ border: 0, padding: 0, display: "grid", gap: 8 }}><legend style={{ fontWeight: 600, marginBottom: 6 }}>2. Route for this truck</legend>
-            {truck.routes.map((r) => <Choice key={r.id} on={r.id === routeId} onClick={() => pickRoute(r.id)}>{r.label}</Choice>)}</fieldset>}
+            {(() => { const sc = truck.routes.filter((r) => runsNow(truck.id, r.id)); const narrowed = !allRoutes && sc.length > 0 && sc.length < truck.routes.length; const list = narrowed ? sc : truck.routes;
+              return <>{sched.length > 0 && <p style={{ fontSize: 12.5 }} role="status"><b>DEMO schedule (synthetic example, not real route times):</b> {sc.length === 0 ? "no demo route is scheduled for this truck right now, so all routes are shown." : narrowed ? `showing ${sc.length} of ${truck.routes.length} routes scheduled for now.` : "showing all routes."}</p>}
+                {list.map((r) => <Choice key={r.id} on={r.id === routeId} onClick={() => pickRoute(r.id)}>{r.label}{runsNow(truck.id, r.id) ? " · DEMO scheduled now" : ""}</Choice>)}
+                {sc.length > 0 && sc.length < truck.routes.length && <Button type="button" variant="outline" style={{ minHeight: 48 }} onClick={() => setAllRoutes(!allRoutes)}>{narrowed ? "Show all routes" : "Show only scheduled routes"}</Button>}</>; })()}</fieldset>}
+        {demo && route && <p style={{ fontSize: 12.5 }} role="note"><b>Autofilled from the DEMO route mapping (synthetic):</b> material, work order and disposal location. Edit any of them below; changes are recorded as corrections.</p>}
         </>) : (
           <div className="grid">
             <div className="fld"><label htmlFor="d-truck" style={{ fontSize: 14 }}>Truck</label><input id="d-truck" className="ctl" style={bigIn} maxLength={80} value={truckTxt} onChange={(e) => { setTruckTxt(e.target.value); setReview(false); }} /></div>

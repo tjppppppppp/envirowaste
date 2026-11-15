@@ -4,7 +4,8 @@ import { AppShell } from "../components/shell";
 import { Button } from "../components/ui/button";
 import { backend } from "../lib/backend";
 import { FIELDS, normDate, normWeight, parseCsv, suggest, downloadCsv } from "../lib/csv";
-import { fmt, useAudits, useMode, useRole, useUser } from "../lib/store";
+import { fmt, useAudits, useDriverEntries, useMode, useRecords, useRole, useUser } from "../lib/store";
+import { HBars, type Bar } from "../components/breakdown";
 
 export const Route = createFileRoute("/explorer")({
   head: () => ({ meta: [{ title: "Waste Explorer — EnviroWaste" }, { name: "description", content: "Import a LoadMan-style CSV or Excel (.xlsx) file, map columns, validate, flag duplicates and save normalized records privately." }] }),
@@ -91,6 +92,7 @@ function Explorer() {
   return (
     <AppShell title="Waste Explorer" active="/explorer">
       <p className="nx-lead">Import a LoadMan-style CSV or Excel (.xlsx) file, confirm the column mapping, review validation, then save. Originals are kept untouched; every change is recorded. Missing values stay missing, never zero.</p>
+      <Breakdown />
       {!user && ready && <p className="msg warn">You can parse and preview without an account. <Link to="/sign-in" style={{ textDecoration: "underline" }}>Sign in</Link> to save records privately.</p>}
       {user && !canWrite && <p className="msg warn">Your role is {role}. Importing needs the researcher or administrator role, set by an administrator in Settings.</p>}
       <div className="card">
@@ -166,6 +168,49 @@ function DriverEntries() {
             {rowsB.map((r) => <tr key={r.b}><td>{r.b}</td><td>{r.n}</td><td>{fmt(r.kg, 1)}</td><td>{[...r.mats].join(", ")}</td><td>{r.a ? (r.a.contamination_pct == null ? <em>unknown</em> : r.a.contamination_pct + "%") + " (" + r.a.audit_date + ", " + r.a.method + ")" : <em>no audit</em>}</td></tr>)}
             <tr><td><em>Unknown building</em></td><td>{noB}</td><td>{fmt(es.filter((e) => !e.building).reduce((a, e) => a + e.net_kg, 0), 1)}</td><td colSpan={2}>Not attributed — building was not recorded.</td></tr></tbody></table></div>}
         <div className="bar" style={{ marginTop: 8 }}><Button variant="outline" size="sm" disabled={es.length === 0} onClick={exp}>Export attribution CSV</Button></div></>}
+    </div>
+  );
+}
+
+type View = "stream" | "material" | "destination";
+function Breakdown() {
+  const mode = useMode(); const demo = mode === "demo"; const { records, signedIn } = useRecords(); const { audits } = useAudits(mode); const { entries, signedIn: dSigned } = useDriverEntries(demo);
+  const [view, setView] = useState<View>("stream"); const [pick, setPick] = useState<string | null>(null);
+  const dates = (xs: string[]) => { const d = xs.filter(Boolean).sort(); return d.length ? `${d[0]} to ${d[d.length - 1]}` : "no dates"; };
+  const data = useMemo(() => {
+    if (view === "stream") {
+      const m = new Map<string, { v: number; n: number; w: number }>();
+      for (const r of records) { const k = r.stream && r.stream !== "unknown" ? r.stream : "unknown (not recorded)"; const e = m.get(k) ?? { v: 0, n: 0, w: 0 }; e.n++; if (r.weight != null) { e.v += r.weight; e.w++; } m.set(k, e); }
+      const bars: Bar[] = [...m.entries()].sort((a, b) => b[1].v - a[1].v).map(([k, v]) => ({ key: k, label: k, value: v.w ? v.v : null, count: v.n, note: v.w < v.n ? `${v.n - v.w} of ${v.n} without weight` : "" }));
+      return { bars, unit: "t", digits: 1, cover: `${fmt(records.length)} collection records, ${dates(records.map((r) => r.date))}. Measurement type: recorded truck or ticket weight. Source: ${[...new Set(records.map((r) => r.source))].join(", ") || "none"}.`,
+        head: ["Date", "Weight (t)", "Building", "Container", "Source"], rows: (k: string) => records.filter((r) => (r.stream && r.stream !== "unknown" ? r.stream : "unknown (not recorded)") === k).slice(0, 100).map((r) => [r.date || "unknown", r.weight == null ? "unknown" : fmt(r.weight, 3), r.building ?? "unknown", r.container || "unknown", r.source]) };
+    }
+    if (view === "material") {
+      const m = new Map<string, { kg: number; n: number }>(); let unk = 0, unkN = 0;
+      for (const a of audits) { const meas = (a.measurements ?? []); let sum = 0; for (const x of meas) { if (x.kg == null) continue; sum += x.kg; const e = m.get(x.name) ?? { kg: 0, n: 0 }; e.kg += x.kg; e.n++; m.set(x.name, e); } if (a.sample_weight_kg != null) { const u = Number(a.sample_weight_kg) - sum; if (u > 0.0001) { unk += u; unkN++; } } }
+      const bars: Bar[] = [...m.entries()].sort((a, b) => b[1].kg - a[1].kg).map(([k, v]) => ({ key: k, label: k, value: v.kg, count: v.n, note: "audit sample kg" }));
+      if (unkN) bars.push({ key: "unmeasured", label: "Unmeasured part of sample", value: unk, count: unkN, note: "sample weight minus categorized kg" });
+      return { bars, unit: "kg", digits: 1, cover: `${audits.length} audits, ${dates(audits.map((a) => a.audit_date))}. Measurement type: ${[...new Set(audits.map((a) => a.method))].join(", ") || "none"}. These are kilograms of audited samples, not the mass collected, so they are not scaled to collection totals.`,
+        head: ["Audit", "Building", "Date", "Method", "kg in category"], rows: (k: string) => audits.filter((a) => k === "unmeasured" ? a.sample_weight_kg != null : (a.measurements ?? []).some((x) => x.name === k)).map((a) => { const x = (a.measurements ?? []).find((y) => y.name === k); return [a.title, a.building, a.audit_date, a.method, k === "unmeasured" ? "see audit" : x?.kg == null ? "unknown" : String(x.kg)]; }) };
+    }
+    const m = new Map<string, { kg: number; n: number }>();
+    for (const e of entries) { const k = e.disposal_location?.trim() || "unknown (not recorded)"; const x = m.get(k) ?? { kg: 0, n: 0 }; x.kg += e.net_kg; x.n++; m.set(k, x); }
+    const bars: Bar[] = [...m.entries()].sort((a, b) => b[1].kg - a[1].kg).map(([k, v]) => ({ key: k, label: k, value: v.kg, count: v.n, note: "intended destination recorded by driver" }));
+    return { bars, unit: "kg", digits: 1, cover: `${entries.length} Collection Log driver entries, ${dates(entries.map((e) => e.entered_at.slice(0, 10)))}. Measurement type: driver full minus empty weight. Imported records carry no destination field, so they are not in this view.`,
+      head: ["Saved", "Truck / route", "Material", "Building", "Net kg"], rows: (k: string) => entries.filter((e) => (e.disposal_location?.trim() || "unknown (not recorded)") === k).map((e) => [new Date(e.entered_at).toLocaleString(), `${e.truck} / ${e.route}`, e.material, e.building ?? "unknown", fmt(e.net_kg, 1)]) };
+  }, [view, records, audits, entries]);
+  const tabs: [View, string][] = [["stream", "Collection stream"], ["material", "Recorded material category"], ["destination", "Documented destination"]];
+  const needSign = view === "destination" ? !dSigned : demo ? false : !signedIn;
+  const drill = pick ? data.rows(pick) : [];
+  return (
+    <div className="card" id="breakdown"><h2>How waste breaks down — {demo ? "SYNTHETIC DEMO data set" : "project data set"}</h2>
+      <p className="msg warn" style={{ fontSize: 13 }}>A collection stream or an intended destination is a label on a record. It is not proof that material was actually recycled, diverted or downcycled, and no recycling rate, endpoint or cause is inferred here. Each view uses one kind of measurement, and the three are never combined into one total.</p>
+      <div className="bar" role="group" aria-label="Breakdown view">{tabs.map(([k, l]) => <Button key={k} size="sm" variant={view === k ? "default" : "outline"} aria-pressed={view === k} onClick={() => { setView(k); setPick(null); }}>{l}</Button>)}</div>
+      {needSign ? <p className="msg warn"><Link to="/sign-in" style={{ textDecoration: "underline" }}>Sign in</Link> to see {view === "destination" ? "driver entries" : "your project records"}. Project records are private to your role.</p> :
+        <><p style={{ fontSize: 12.5, margin: "6px 0" }}><b>Coverage:</b> {data.cover}</p>
+          <HBars bars={data.bars} unit={data.unit} digits={data.digits} label={"Breakdown by " + view} active={pick} onPick={(k) => setPick(pick === k ? null : k)} />
+          {pick && <div style={{ marginTop: 10 }}><div className="bar" style={{ justifyContent: "space-between" }}><b>Underlying records: {pick} ({drill.length})</b><Button size="sm" variant="outline" onClick={() => setPick(null)}>Close</Button></div>
+            <div className="scroll" style={{ maxHeight: 280 }}><table className="t"><thead><tr>{data.head.map((h) => <th key={h}>{h}</th>)}</tr></thead><tbody>{drill.map((r, i) => <tr key={i}>{r.map((c, j) => <td key={j}>{c === "unknown" ? <em>unknown</em> : c}</td>)}</tr>)}</tbody></table></div></div>}</>}
     </div>
   );
 }

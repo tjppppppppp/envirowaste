@@ -64,3 +64,15 @@ export const DEMO_AUDITS: Audit[] = ["Grainger Library", "Illini Union", "Siebel
   return { id: "demo" + i, title: `${b} landfill audit`, building: b, location: "Main lobby bins", researchers: "M. Okafor", audit_date: d.toISOString().slice(0, 10), status: i === 0 ? "Under Review" : "Completed", sample_weight_kg: 42 + i * 9, method: "Physical measurement", contamination_pct: [21, 33, 15][i], measurements: [{ name: "Paper", kg: 16 + i }, { name: "Plastic", kg: 11 }, { name: "Organics", kg: 6 + i }, { name: "Other", kg: 2 }], notes: "Synthetic audit." };
 });
 export function fmt(n: number, d = 0) { return n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d }); }
+
+export type DriverEntry = { id: string; entered_at: string; truck: string; route: string; material: string; building: string | null; container: string | null; net_kg: number; disposal_location: string; work_order_status: string };
+// Driver-log entries are a separate source from imported records; they are never merged into import totals.
+export function useDriverEntries(demo: boolean) {
+  const { user } = useUser(); const [es, setEs] = useState<DriverEntry[]>([]); const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    if (!user) { setEs([]); setLoaded(true); return; }
+    backend.from("collection_entries").select("id,entered_at,truck,route,material,building,container,net_kg,disposal_location,work_order_status").eq("is_demo", demo).order("entered_at", { ascending: false }).limit(2000)
+      .then(({ data }) => { setEs((data ?? []).map((r: any) => ({ ...r, net_kg: r.net_kg == null ? NaN : Number(r.net_kg) })).filter((r: DriverEntry) => isFinite(r.net_kg))); setLoaded(true); });
+  }, [user?.id, demo]);
+  return { entries: es, signedIn: !!user, loaded };
+}
