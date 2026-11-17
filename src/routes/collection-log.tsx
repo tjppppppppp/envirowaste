@@ -102,6 +102,7 @@ function Driver() {
           <span><b>Driver:</b> {user?.email ?? "not signed in"}</span>
           <span><b>Date/time:</b> <span suppressHydrationWarning>{now ? now.toLocaleString() : "…"}</span> (automatic)</span>
         </div>
+        {!demo && <p className="msg warn" role="note" style={{ fontSize: 12.5 }}>Project mode: no route definitions are configured. Truck, route and work order are entered manually and a work order stays unknown unless you type it. Real UIUC routes are not assumed; an administrator can add authorized definitions in Settings once supplied.</p>}
         {demo ? (<>
           <fieldset style={{ border: 0, padding: 0, display: "grid", gap: 8 }}><legend style={{ fontWeight: 600, marginBottom: 6 }}>1. Truck (synthetic)</legend>
             {DEMO_TRUCKS.map((t) => <Choice key={t.id} on={t.id === truckId} onClick={() => pickTruck(t.id)}>{t.label}</Choice>)}</fieldset>

@@ -34,6 +34,14 @@ function Settings() {
           <li>Open Insights to review findings, then generate and export the summary in Reports.</li>
         </ol></div>
 
+      <div className="card" id="data-quality"><h2>Data-quality gate</h2>
+        <p style={{ fontSize: 13, lineHeight: 1.6 }}>Overview metrics are calculated only when their required inputs exist: totals need weights and dates on at least 80% of records, trends need 8 weeks of weighed records, counts need records. Otherwise the metric shows Unavailable with the reason; unavailable is never shown as zero.</p>
+        <ul style={{ fontSize: 13, lineHeight: 1.7, paddingLeft: 16 }}>
+          <li><b>Recorded</b>: measured values from current records.</li>
+          <li><b>Historical</b>: records mostly older than 90 days.</li>
+          <li><b>Estimated / inferred</b>: for example building attribution from column mapping; not verified.</li>
+          <li><b>Demo (synthetic)</b>: example data, never verified.</li>
+        </ul></div>
       <div className="card" id="roadmap"><h2>Roadmap: implemented vs planned</h2>
         <table className="t"><thead><tr><th>Order</th><th>Item</th><th>Status</th></tr></thead><tbody>
           <tr><td>—</td><td>Overview dashboard, LoadMan-style CSV importer with data quality, Source Mapper, Waste Audit Manager, Insights, Reports (completed earlier)</td><td>Implemented</td></tr>

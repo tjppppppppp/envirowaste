@@ -9,6 +9,7 @@ import { fmt, useAudits, useDriverEntries, useRecords } from "../lib/store";
 import { Columns, HBars } from "../components/breakdown";
 import { downloadCsv } from "../lib/csv";
 import { Button } from "../components/ui/button";
+import { BASIS_LABEL, gateAttribution, gateCount, gateTotalWeight, gateTrend, isHistorical, type Gate } from "../lib/quality";
 
 export const Route = createFileRoute("/")({
   head: () => ({ meta: [{ title: "Overview — EnviroWaste" }, { name: "description", content: "Collection trends, attribution completeness, measured composition and data quality for campus waste research." }] }),
@@ -41,6 +42,9 @@ export function Overview() {
   const drilled = useMemo(() => !drill ? [] : filtered.filter((r) => drill.kind === "building" ? (drill.key ? r.building === drill.key : !!r.building) : drill.kind === "period" ? !!r.date && key(r.date) === drill.key : drill.kind === "stream" ? r.stream === drill.key : drill.kind === "source" ? r.source === drill.key : !r.building), [drill, filtered, grain]);
   const dTot = driver.reduce((a, e) => a + e.net_kg, 0);
   const empty = records.length === 0;
+  const gi = { n: st.n, withWeight, withDate: st.n - st.missingDate, attributed: st.attributed, demo: mode === "demo", historical: filtered.filter((r) => isHistorical(r.date)).length, weeks: cols.length };
+  const gTotal = gateTotalWeight(gi); const gCount = gateCount(gi); const gAttr = gateAttribution(gi); const gTrend = gateTrend({ ...gi, weeks: grain === "week" ? cols.length : 0 });
+  const Basis = ({ g }: { g: Gate }) => <small className="basis" style={{ display: "block", fontSize: 11 }}>{g.ok ? `${BASIS_LABEL[g.basis]} — ${g.note}` : `Unavailable — ${g.reason}`}</small>;
   return (
     <AppShell title="Overview" active="/">
       {empty && <p className="msg warn">{signedIn ? "No project records yet. Import a CSV in Waste Explorer." : "Project mode shows your private uploads. Sign in and import a CSV, or switch to Demo."}</p>}
@@ -59,11 +63,11 @@ export function Overview() {
         <select aria-label="Source" value={src} onChange={(e) => setSrc(e.target.value)}><option value="">Source</option>{[...SOURCES, "Imported CSV"].map((x) => <option key={x}>{x}</option>)}</select>
       </div>
       <section className="grid kpis kpis6" aria-label="Headline metrics">
-        <div className="card kpi" style={{ gridColumn: "span 2" }}><Tag k="REC" /><b style={{ fontSize: 34 }}>{withWeight === 0 ? "No data" : `${fmt(st.total, 1)} t`}</b><span className="l">Recorded total net weight</span><small style={{ display: "block" }}>{withWeight === 0 ? "No record in this selection has a weight." : `From ${fmt(withWeight)} of ${fmt(st.n)} records with a weight; records without one are not counted as zero.`}</small></div>
-        <button type="button" className="card kpi" style={{ textAlign: "left" }} onClick={() => setDrill(null)}><Tag k="CALC" /><b>{empty ? "—" : fmt(st.n)}</b><span className="l">Collection records</span></button>
-        <button type="button" className="card kpi" style={{ textAlign: "left" }} disabled={!st.attributed} onClick={() => setDrill({ kind: "building", key: "" })}><Tag k="REC" /><b>{empty ? "—" : fmt(st.attributed)}</b><span className="l">Attributed to a building</span></button>
-        <button type="button" className="card kpi hatch" style={{ textAlign: "left" }} disabled={!st.unknown} onClick={() => setDrill({ kind: "unknown", key: "" })}><Tag k="UNK" /><b>{empty ? "—" : fmt(st.unknown)}</b><span className="l">Unknown building (show records)</span></button>
-        <div className="card kpi"><Tag k="CALC" /><b>{audits.length}</b><span className="l">Audits</span></div>
+        <div className="card kpi" style={{ gridColumn: "span 2" }}><Tag k="REC" /><b style={{ fontSize: 34 }}>{gTotal.ok ? `${fmt(st.total, 1)} t` : "Unavailable"}</b><span className="l">Recorded total net weight</span><Basis g={gTotal} /><small style={{ display: "block" }}>Records without a weight are not counted as zero.</small></div>
+        <button type="button" className="card kpi" style={{ textAlign: "left" }} onClick={() => setDrill(null)}><Tag k="CALC" /><b>{gCount.ok ? fmt(st.n) : "Unavailable"}</b><span className="l">Collection records</span><Basis g={gCount} /></button>
+        <button type="button" className="card kpi" style={{ textAlign: "left" }} disabled={!st.attributed} onClick={() => setDrill({ kind: "building", key: "" })}><Tag k="REC" /><b>{gAttr.ok ? fmt(st.attributed) : "Unavailable"}</b><span className="l">Attributed to a building</span><Basis g={gAttr} /></button>
+        <button type="button" className="card kpi hatch" style={{ textAlign: "left" }} disabled={!st.unknown} onClick={() => setDrill({ kind: "unknown", key: "" })}><Tag k="UNK" /><b>{gAttr.ok ? fmt(st.unknown) : "Unavailable"}</b><span className="l">Unknown building (show records)</span><Basis g={gAttr} /></button>
+        <div className="card kpi"><Tag k="CALC" /><b>{audits.length}</b><span className="l">Audits</span><small className="basis" style={{ display: "block", fontSize: 11 }}>Count of saved audits</small></div>
       </section>
       <section className="grid row2">
         <div className="card">
@@ -71,7 +75,7 @@ export function Overview() {
             <div role="group" aria-label="Chart period">{(["day", "week", "month"] as const).map((g) => <Button key={g} size="sm" variant={grain === g ? "default" : "outline"} aria-pressed={grain === g} onClick={() => { setGrain(g); setDrill(null); }}>{g === "day" ? "Daily" : g === "week" ? "Weekly" : "Monthly"}</Button>)}</div></div>
           <p style={{ fontSize: 12, margin: "4px 0" }}>Tonnes from the records matching the filters. Select a column to list its records.</p>
           <Columns cols={cols} unit="t" label={`Net weight per ${grain}`} active={drill?.kind === "period" ? drill.key : null} onPick={(k) => setDrill({ kind: "period", key: k })} />
-          <p style={{ fontSize: 12, marginTop: 6 }}>{trend == null ? "Trend: not shown. It needs at least 8 weeks of weighed records on the weekly view." : `Trend: last 4 weeks ${trend >= 0 ? "up" : "down"} ${fmt(Math.abs(trend), 0)}% vs the 4 weeks before (recorded weights only; not a cause).`}</p>
+          <p style={{ fontSize: 12, marginTop: 6 }}>{!gTrend.ok || trend == null ? `Trend: unavailable. ${gTrend.ok ? "The earlier 4 weeks have no recorded weight." : gTrend.reason}` : `${BASIS_LABEL[gTrend.basis]}: ` + `Trend: last 4 weeks ${trend >= 0 ? "up" : "down"} ${fmt(Math.abs(trend), 0)}% vs the 4 weeks before (recorded weights only; not a cause).`}</p>
         </div>
         <div className="card">
           <h2>Net weight by building <Tag k="REC" /></h2>
@@ -103,7 +107,7 @@ export function Overview() {
             <div className="stack" style={{ flex: 1 }} role="img" aria-label={pct == null ? "Unknown share not available" : `${fmt(pct, 1)}% of records unknown`}>
               <div style={{ width: `${pct == null ? 0 : 100 - pct}%`, background: "#17808a" }} /><div className="hatch" style={{ flex: 1, border: "1px solid #14233f55" }} />
             </div>
-            <b style={{ fontFamily: "var(--font-heading)", fontSize: 15 }}>{pct == null ? "—" : `${fmt(pct, 1)}% Unknown`}</b>
+            <b style={{ fontFamily: "var(--font-heading)", fontSize: 15 }}>{pct == null ? "Unavailable" : `${fmt(pct, 1)}% Unknown`}</b><small style={{ fontSize: 11 }}>{gAttr.ok ? BASIS_LABEL[gAttr.basis] : "Unavailable"}</small><b hidden></b>
           </div>
         </div>
         <div className="card">
