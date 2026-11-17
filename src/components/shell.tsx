@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useState, useEffect, type ReactNode } from "react";
-import { ScanText, BarChart3, Search, MapPin, ListChecks, ClipboardList, FlaskConical, Lightbulb, Settings2, FileText, Settings, Menu, UserRound, LogOut } from "lucide-react";
+import { ScanText, BarChart3, Search, MapPin, ListChecks, ClipboardList, FlaskConical, Lightbulb, Settings2, FileText, Settings, ScanSearch, Menu, UserRound, LogOut } from "lucide-react";
 import { Image } from "../image";
 import { backend } from "../lib/backend";
 import { setMode, useMode, useUser } from "../lib/store";
@@ -15,6 +15,7 @@ const NAV = [
   { to: "/insights", label: "Insights", icon: Lightbulb },
   { to: "/interventions", label: "Interventions", icon: Settings2 },
   { to: "/digitization", label: "Records Digitization", icon: ScanText },
+  { to: "/ai-scanner", label: "AI Scanner", icon: ScanSearch },
   { to: "/reports", label: "Reports", icon: FileText },
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;

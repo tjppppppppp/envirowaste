@@ -43,6 +43,13 @@
       "when": 1794703864548,
       "tag": "0005_create_route_schedule_table_with_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794894703722,
+      "tag": "0006_create_waste_observations_table",
+      "breakpoints": true
     }
   ]
 }
