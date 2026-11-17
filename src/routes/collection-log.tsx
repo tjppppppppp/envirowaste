@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { AppShell } from "../components/shell";
+import { AppShell, Tag } from "../components/shell";
 import { Button } from "../components/ui/button";
 import { downloadCsv } from "../lib/csv";
 import { backend } from "../lib/backend";
@@ -21,9 +21,10 @@ function Records() {
   return (
     <>
       <p className="nx-lead">Read-only log of imported collection records in the {mode === "demo" ? "demo" : "project"} dataset.</p>
+      <p className="msg warn" style={{ fontSize: 13 }}><b>Historical data — building attribution unverified.</b> These records are imported from LoadMan exports. Building names were inferred from route or ticket data, not confirmed by F&amp;S staff. Do not use building totals from this log as verified waste generation figures.</p>
       <div className="bar"><label className="sr-only" htmlFor="lq">Filter</label><input id="lq" className="ctl" placeholder="Filter by building, container, stream" value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} /><Button variant="outline" size="sm" onClick={exp}>Export CSV</Button><span>{fmt(f.length)} records</span></div>
       <div className="card scroll"><table className="t"><thead><tr><th>Date</th><th>Weight (t)</th><th>Building</th><th>Container</th><th>Stream</th><th>Source</th></tr></thead>
-        <tbody>{f.slice(page * 25, page * 25 + 25).map((r, i) => <tr key={i}><td>{r.date || <em>unknown</em>}</td><td>{r.weight == null ? <em>unknown</em> : fmt(r.weight, 3)}</td><td>{r.building ?? <em>unknown</em>}</td><td>{r.container || <em>unknown</em>}</td><td>{r.stream}</td><td>{r.source}</td></tr>)}</tbody></table>
+        <tbody>{f.slice(page * 25, page * 25 + 25).map((r, i) => <tr key={i}><td>{r.date || <em>unknown</em>}</td><td>{r.weight == null ? <em>unknown</em> : fmt(r.weight, 3)}</td><td>{r.building ?? <em>unknown</em>}</td><td>{r.container || <em>unknown</em>}</td><td>{r.stream}</td><td>{r.source === "LoadMan export" ? <><Tag k="HIST" /> {r.source}</> : r.source}</td></tr>)}</tbody></table>
         {f.length === 0 && <p style={{ padding: 8, fontSize: 13 }}>No records.</p>}</div>
       <div className="bar"><Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(page - 1)}>Previous</Button><Button variant="outline" size="sm" disabled={(page + 1) * 25 >= f.length} onClick={() => setPage(page + 1)}>Next</Button></div>
     </>
@@ -94,9 +95,10 @@ function Driver() {
     ...entries.map((e) => [e.entered_at, e.driver_email, e.is_demo ? "SYNTHETIC DEMO" : "PROJECT", e.truck, e.route, e.material, e.work_order, e.work_order_status, e.building ?? "", e.container ?? "", e.disposal_location, e.unit, e.full_weight, e.empty_weight, e.net_weight, Math.round(e.net_kg * 1000) / 1000, e.notes, e.corrections.map((c) => `${c.field}: ${c.from ?? "(blank)"} -> ${c.to ?? "(blank)"}`).join("; ")])]);
   return (
     <div className="grid" style={{ maxWidth: 720 }}>
-      <p className="nx-lead">{demo ? "Demonstration mode: trucks, routes, work orders and disposal locations below are SYNTHETIC examples, not actual UIUC assignments. Entries are saved as demo entries. An administrator can edit these synthetic mappings in Settings." : "Project mode: no authorized truck, route or work-order mappings are configured, so nothing is filled in for you and work orders stay unknown unless you type one. Nothing here is used from the demo mappings."} This is a proposed supplementary workflow, not connected to university trucks or LoadMan.</p>
+      <p className="nx-lead">{demo ? "Demonstration mode: trucks, routes, work orders and disposal locations below are SYNTHETIC examples, not actual UIUC assignments. Entries are saved as demo entries. An administrator can edit these synthetic mappings in Settings." : "Project mode: real F\u0026S route mappings are not yet configured — truck, route and work-order fields are entered manually. Entries in this mode are real operational records. Work orders remain unknown unless you type one."} This is a proposed supplementary workflow, not connected to university trucks or LoadMan.</p>
       {!user && ready && <p className="msg warn"><Link to="/sign-in" style={{ textDecoration: "underline" }}>Sign in</Link> to record collections; your identity comes from your login.</p>}
       {user && !allowed && <p className="msg warn">Your role is {role.replace("_", " ")}; recording collections needs the driver role (or administrator/researcher). An administrator can grant it in Settings.</p>}
+      {!demo && user && <p className="msg" style={{ fontSize: 13, borderColor: "#17808a" }}><b>Real route data needed:</b> Route names and truck IDs are entered manually until F&amp;S provides authorized mappings. Leave route/truck blank or type "unknown" if unsure — do not invent route names.</p>}
       <div className="card" style={{ display: "grid", gap: 14 }}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 16, fontSize: 14 }}>
           <span><b>Driver:</b> {user?.email ?? "not signed in"}</span>
@@ -149,7 +151,7 @@ function Driver() {
         <div className="scroll"><table className="t"><thead><tr><th>Saved</th><th>Truck</th><th>Route</th><th>Material</th><th>Work order</th><th>Building</th><th>Disposal</th><th>Net</th></tr></thead>
           <tbody>{entries.map((e) => <tr key={e.id}><td>{new Date(e.entered_at).toLocaleString()}</td><td>{e.truck}</td><td>{e.route}</td><td>{e.material}</td><td>{e.work_order ?? <em>unknown</em>}</td><td>{e.building ?? <em>unknown</em>}</td><td>{e.disposal_location}</td><td>{fmt(e.net_weight, 2)} {e.unit}</td></tr>)}</tbody></table></div>
         {entries.length === 0 && <p style={{ fontSize: 13, padding: 6 }}>{user ? "No entries saved yet." : "Sign in to see your entries."}</p>}
-        <p style={{ fontSize: 12, marginTop: 6 }}>Only you (and administrators) can read your entries. Saved entries cannot be edited or deleted; original autofilled values and corrections stay with each record.</p></div>
+        <p style={{ fontSize: 12, marginTop: 6 }}>Only you (and administrators) can read your entries. Saved entries cannot be edited or deleted; original autofilled values and corrections stay with each record. To correct a mistake, save a new entry with a note explaining the correction.</p></div>
     </div>
   );
 }

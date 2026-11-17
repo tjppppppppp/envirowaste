@@ -64,7 +64,7 @@ export function AppShell({ title, children, active }: { title: string; children:
     </div>
   );
 }
-export function Tag({ k }: { k: "REC" | "CALC" | "UNK" | "EST" }) {
-  const t = { REC: "Recorded measurement", CALC: "Calculated value", UNK: "Unknown — not zero", EST: "Estimate" }[k];
+export function Tag({ k }: { k: "REC" | "CALC" | "UNK" | "EST" | "HIST" }) {
+  const t = { REC: "Recorded measurement", CALC: "Calculated value", UNK: "Unknown — not zero", EST: "Estimate", HIST: "Historical — building attribution unverified" }[k];
   return <span className={"tag tag-" + k} title={t} aria-label={t}>{k}</span>;
 }

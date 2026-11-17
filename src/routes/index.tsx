@@ -44,6 +44,20 @@ export function Overview() {
   return (
     <AppShell title="Overview" active="/">
       {empty && <p className="msg warn">{signedIn ? "No project records yet. Import a CSV in Waste Explorer." : "Project mode shows your private uploads. Sign in and import a CSV, or switch to Demo."}</p>}
+      {!empty && mode === "project" && bySrc.some(([k]) => k === "Imported CSV") && (
+        <p className="msg warn" style={{ fontSize: 13 }}>
+          <b>Data quality notice:</b> Imported records include LoadMan-derived data where building attribution was inferred from route or ticket data, not confirmed by F&amp;S staff.
+          Building totals and attribution rates below reflect this uncertainty.
+          <Tag k="HIST" /> = historical record with unverified building attribution.
+          KPIs requiring verified weights (diversion rate, recycling rate, contamination rate) are not calculated from this data.
+        </p>
+      )}
+      {!empty && mode === "demo" && (
+        <p className="msg" style={{ fontSize: 13, borderColor: "#17808a" }}>
+          <b>Demo data — not operational records.</b> KPI tiles show counts and totals from synthetic demonstration records only.
+          No diversion rate, recycling rate or contamination rate is calculated because the required verified stream weights are unavailable.
+        </p>
+      )}
       <div className="bar" aria-label="Filters">
         <label className="ctl" style={{ display: "flex", gap: 6, alignItems: "center" }}><CalendarDays size={16} aria-hidden /><span className="sr-only">Date range</span>
           <select aria-label="Date range" value={range} onChange={(e) => setRange(e.target.value)} style={{ border: 0, background: "none" }}><option value="all">Full range</option><option value="30">Last 30 days</option><option value="60">Last 60 days</option></select></label>
@@ -59,11 +73,16 @@ export function Overview() {
         <select aria-label="Source" value={src} onChange={(e) => setSrc(e.target.value)}><option value="">Source</option>{[...SOURCES, "Imported CSV"].map((x) => <option key={x}>{x}</option>)}</select>
       </div>
       <section className="grid kpis kpis6" aria-label="Headline metrics">
-        <div className="card kpi" style={{ gridColumn: "span 2" }}><Tag k="REC" /><b style={{ fontSize: 34 }}>{withWeight === 0 ? "No data" : `${fmt(st.total, 1)} t`}</b><span className="l">Recorded total net weight</span><small style={{ display: "block" }}>{withWeight === 0 ? "No record in this selection has a weight." : `From ${fmt(withWeight)} of ${fmt(st.n)} records with a weight; records without one are not counted as zero.`}</small></div>
+        <div className="card kpi" style={{ gridColumn: "span 2" }}><Tag k="REC" />{mode === "project" && withWeight > 0 && <Tag k="HIST" />}<b style={{ fontSize: 34 }}>{withWeight === 0 ? "No data" : `${fmt(st.total, 1)} t`}</b><span className="l">Recorded total net weight</span><small style={{ display: "block" }}>{withWeight === 0 ? "No record in this selection has a weight." : `From ${fmt(withWeight)} of ${fmt(st.n)} records with a weight; records without one are not counted as zero.`}{mode === "project" && withWeight > 0 ? " Source: imported records — building attribution unverified." : ""}</small></div>
         <button type="button" className="card kpi" style={{ textAlign: "left" }} onClick={() => setDrill(null)}><Tag k="CALC" /><b>{empty ? "—" : fmt(st.n)}</b><span className="l">Collection records</span></button>
-        <button type="button" className="card kpi" style={{ textAlign: "left" }} disabled={!st.attributed} onClick={() => setDrill({ kind: "building", key: "" })}><Tag k="REC" /><b>{empty ? "—" : fmt(st.attributed)}</b><span className="l">Attributed to a building</span></button>
+        <button type="button" className="card kpi" style={{ textAlign: "left" }} disabled={!st.attributed} onClick={() => setDrill({ kind: "building", key: "" })}><Tag k={mode === "project" ? "HIST" : "REC"} /><b>{empty ? "—" : fmt(st.attributed)}</b><span className="l">Attributed to a building{mode === "project" ? " (unverified)" : ""}</span></button>
         <button type="button" className="card kpi hatch" style={{ textAlign: "left" }} disabled={!st.unknown} onClick={() => setDrill({ kind: "unknown", key: "" })}><Tag k="UNK" /><b>{empty ? "—" : fmt(st.unknown)}</b><span className="l">Unknown building (show records)</span></button>
         <div className="card kpi"><Tag k="CALC" /><b>{audits.length}</b><span className="l">Audits</span></div>
+      </section>
+      <section className="grid kpis kpis3" aria-label="Rate metrics — require verified stream weights">
+        <div className="card kpi kpi-gate"><b style={{ fontSize: 20, color: "#57606a" }}>—</b><span className="l">Diversion rate</span><small>Requires verified weights for recycling, compost, and landfill streams from the same period and scope. <a href="/audits" style={{ color: "inherit", textDecoration: "underline" }}>Add a waste audit</a> to begin.</small></div>
+        <div className="card kpi kpi-gate"><b style={{ fontSize: 20, color: "#57606a" }}>—</b><span className="l">Recycling rate</span><small>Requires verified recycling and landfill stream weights for the same scope.</small></div>
+        <div className="card kpi kpi-gate"><b style={{ fontSize: 20, color: "#57606a" }}>—</b><span className="l">Contamination rate</span><small>Requires a waste audit with per-item stream classification. Not inferred from imported records.</small></div>
       </section>
       <section className="grid row2">
         <div className="card">
